@@ -1,0 +1,42 @@
+Suivi de Declaration
+Recouvrement -> Relance 
+Demande Echeance
+    Fonctionnalite de plus:
+        -mise en veilleuse
+        -different types de payement
+        
+
+
+
+
+
+ANALYSE DE BESOINS:
+    QUOI ?
+        -Pas de suivi de declaration:
+            on n'a pas le vrai suivi en temps reel de qui sont actif et defaillant 
+        -si pas paye , Pas de priorisation pour le relance , 
+        -demande d'Echence, on ne connait pas qui doit etre accepter 
+        -Plusieurs personnes ne payent pas , Le DGI perd plusieurs milliards 
+
+    Solutions 
+
+
+coucou , j'ai un projet de recouvrement dans le DGI , c'est pour mon soutenance ,
+ je suis maintenant dans le phase de analyse de besoins et existants :
+    Suivi de Declaration Recouvrement -> Relance  Demande Echeance     
+    Fonctionnalite de plus:         -mise en veilleuse         -different types de payement 
+    ANALYSE DE BESOINS:     QUOI ?         
+        -Pas de suivi de declaration:             
+            on n'a pas le vrai suivi en temps reel de qui sont actif et defaillant          
+        -si pas paye , Pas de priorisation pour le relance ,         
+        -demande d'Echence, on ne connait pas qui doit etre accepter          
+        -Plusieurs personnes ne payent pas , Le DGI perd plusieurs milliards       
+    Solutions     , ce que j'ai ecrit , 
+    tu peux m'aider ?a faire cette etape , le DGI a deja la declaration en ligne ,l'inscription en ligne 
+    je voudrais faire par etape , analyse de besoins et existants, puis on passe a la maquette , conception
+    je voudrais un projet qui a un vrai valeur pour cette soutenance
+
+
+Salama tompoko , mba misy fanontaniana ,ny nitraitena ny recouvrement hatraiza ve t@inona , efa misy logiciel 
+sa Excel , oe rehefa misy manao payement de aiza zareo no misoratra 
+de otrany aon ny fanaovana ny relance ato aminareo ,andefasana message sa oe aona 
