@@ -1,0 +1,37 @@
+📌 Titre du Projet :
+« Conception et réalisation d'un module d'extension pour HetraOnline : Espace interactif de suivi des dettes fiscales et de gestion dématérialisée des demandes d'échéancier »
+
+🛠️ Ce que tu vas développer concrètement (Le périmètre de ton projet) :
+Tu te concentres uniquement sur 3 grands axes très valorisants :
+
+Le Tableau de Bord Décisionnel Contribuable (Dashboard) :
+
+Calcul automatique du solde fiscal (Dette totale = Impôts déclarés non payés + Pénalités selon le Code de Procédure Fiscale).
+Alerte visuelle (Rouge : En retard / Orange : Échéance proche / Vert : À jour).
+Le Module de demande d'Échéancier de paiement (Demande de moratoire en ligne) :
+
+Le contribuable qui ne peut pas payer en une fois fait sa demande en ligne (choix du nombre de mensualités).
+Côté Administration (SSIF / Gestionnaire) : Un écran de validation/rejet de l'échéancier.
+Le Centre de Notifications & Historique unifié :
+
+Journal des relances envoyées par la DGI (Mise en demeure, rappel d'échéance).
+Consolidation Déclaration + Reçu de Paiement dans une seule vue.
+
+
+
+
+
+
+Hierarchie demande
+-chef de centre
+
+
+Hierarchie validation relance sms/email 
+-chef de centre 
+
+Paiement => Facture 
+
+
+
+
+
