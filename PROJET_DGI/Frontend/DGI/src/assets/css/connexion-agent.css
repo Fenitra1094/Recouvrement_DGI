@@ -1,0 +1,295 @@
+/* Connexion agent DGI — src/assets/css/connexion-agent.css */
+
+/* ===== Fond ===== */
+.dgi-portal-wrapper {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(59, 130, 246, 0.16) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 95%, rgba(15, 63, 127, 0.14) 0%, transparent 45%),
+    linear-gradient(135deg, #eaf2f8 0%, #d5e4f3 100%);
+}
+
+/* ===== Réseaux de nœuds (côtés) ===== */
+.network-nodes {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.9;
+}
+.left-nodes { left: 3%; }
+.right-nodes { right: 3%; }
+
+/* ===== Carte ===== */
+.portal-card-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 30px 60px -15px rgba(11, 29, 51, 0.30),
+    0 0 0 1px rgba(11, 29, 51, 0.05);
+}
+
+/* ===== Bannière ===== */
+.portal-header-banner {
+  position: relative;
+  padding: 38px 24px 32px;
+  text-align: center;
+  color: #ffffff;
+  background-color: #0b1d33;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.35) 0%, transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
+}
+
+.dgi-badge {
+  display: inline-block;
+  padding: 9px 22px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0b1d33;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.portal-title {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.portal-subtitle {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  color: #93c5fd;
+}
+
+/* ===== Corps ===== */
+.portal-body {
+  padding: 28px 36px 26px;
+}
+
+.error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.error-box svg { flex: none; margin-top: 1px; }
+
+/* Champs */
+.form-group { margin-bottom: 18px; }
+
+.form-label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.field { position: relative; }
+
+.field-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+.field:focus-within .field-icon { color: #2563eb; }
+
+.custom-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14.5px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.custom-input.has-icon { padding-left: 44px; }
+.custom-input-password { padding-right: 48px; }
+
+.custom-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Œil */
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.toggle-password:hover { color: #2563eb; background: #eff6ff; }
+.toggle-password:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+.forgot-wrapper {
+  margin: -6px 0 20px;
+  text-align: right;
+}
+.forgot-password-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+.forgot-password-link:hover { text-decoration: underline; }
+
+/* Bouton */
+.submit-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.55);
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+}
+.submit-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: 0 10px 22px -6px rgba(37, 99, 235, 0.65);
+}
+.submit-btn:hover:not(:disabled) .btn-arrow { transform: translateX(3px); }
+.submit-btn:active:not(:disabled) { transform: translateY(1px); }
+.submit-btn:disabled { opacity: 0.75; cursor: not-allowed; }
+.btn-arrow { display: flex; transition: transform 0.2s; }
+
+/* Compte de démonstration */
+.demo-box {
+  margin-top: 22px;
+  padding: 12px 14px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 12.5px;
+  color: #475569;
+}
+.demo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+.demo-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+.demo-line { line-height: 1.7; }
+.demo-line code {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #e8eef7;
+  color: #0f2a4a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.demo-fill {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.demo-fill:hover { text-decoration: underline; }
+
+/* Pied de page */
+.portal-footer {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #eef2f7;
+  text-align: center;
+}
+.secure-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+.secure-note svg { flex: none; color: #15803d; }
+.official {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* Liseré drapeau (blanc / rouge / vert) */
+.flag-strip { display: flex; height: 5px; }
+.flag-strip span { flex: 1; }
+.flag-strip span:nth-child(1) { background: #e2e8f0; }
+.flag-strip span:nth-child(2) { background: #fc3d32; }
+.flag-strip span:nth-child(3) { background: #007e3a; }
+
+@media (max-width: 480px) {
+  .portal-body { padding: 24px 20px 22px; }
+  .portal-header-banner { padding: 30px 16px 26px; }
+}

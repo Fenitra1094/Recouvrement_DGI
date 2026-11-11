@@ -1,0 +1,108 @@
+package com.dgi.recouvrement.controller;
+
+import com.dgi.recouvrement.dto.DetteDto;
+import com.dgi.recouvrement.entity.Assujettissement;
+import com.dgi.recouvrement.entity.Contribuable;
+import com.dgi.recouvrement.entity.Declaration;
+import com.dgi.recouvrement.repository.AssujettissementRepository;
+import com.dgi.recouvrement.repository.ContribuableRepository;
+import com.dgi.recouvrement.repository.DeclarationRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Month;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/contribuable")
+public class ContribuableController {
+
+    @Autowired private ContribuableRepository contribuableRepository;
+    @Autowired private AssujettissementRepository assujettissementRepository;
+    @Autowired private DeclarationRepository declarationRepository;
+
+    /**
+     * Dettes d'un contribuable : impôts en attente de paiement.
+     * Génère automatiquement les échéances déclaratives à partir des
+     * assujettissements actifs (première consultation).
+     */
+    @GetMapping("/{email}/dettes")
+    public ResponseEntity<?> getDettes(@PathVariable String email) {
+        try {
+            Contribuable c = contribuableRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Contribuable introuvable : " + email));
+
+            List<DetteDto> dettes = new ArrayList<>();
+            LocalDate aujourdhui = LocalDate.now();
+
+            for (Assujettissement a : assujettissementRepository.findByContribuableAndEstActifTrue(c)) {
+                String code = a.getTypeImpots().getCode();
+                dettes.addAll(creerEcheancesSiAbsentes(c, code, aujourdhui));
+            }
+
+            dettes.sort(Comparator.comparing(DetteDto::dateEcheance));
+            return ResponseEntity.ok(dettes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // --- Génère les échéances de l'année en cours pour un type d'impôt ---
+    private List<DetteDto> creerEcheancesSiAbsentes(Contribuable c, String code, LocalDate aujourdhui) {
+        boolean mensuel = "TVA".equals(code) || "IRSA".equals(code);
+        int nbPeriodes = mensuel ? 12 : 1;
+        int jourLimite = mensuel ? 15 : 15; // 15 du mois suivant (mensuel) / 15 mai (annuel)
+
+        for (int i = 1; i <= nbPeriodes; i++) {
+            String periode = mensuel ? String.format("%d-M%02d", aujourdhui.getYear(), i)
+                                     : "Année " + aujourdhui.getYear();
+            LocalDate echeance = mensuel
+                    ? LocalDate.of(aujourdhui.getYear(), Month.of(i % 12 + 1), jourLimite)
+                    : LocalDate.of(aujourdhui.getYear() + 1, 5, 15);
+
+            String ref = c.getNif() + "-" + code + "-" + periode;
+            boolean existe = declarationRepository.existsByNifAndPeriodeAndTypeImpot(c.getNif(), periode, code);
+            if (!existe) {
+                Declaration d = Declaration.builder()
+                        .nif(c.getNif())
+                        .typeImpot(code)
+                        .periode(periode)
+                        .montantPrincipal(montantForfaitaire(code))
+                        .montantPenalites(BigDecimal.ZERO)
+                        .dateEcheance(echeance)
+                        .referenceBV(ref)
+                        .statut("A_PAYER")
+                        .build();
+                declarationRepository.save(d);
+            }
+        }
+
+        // Relecture depuis la base : seules les dettes non soldées
+        List<DetteDto> dettes = new ArrayList<>();
+        for (Declaration d : declarationRepository.findByNifAndStatut(c.getNif(), "A_PAYER")) {
+            if (!code.equals(d.getTypeImpot())) continue;
+            boolean enRetard = d.getDateEcheance() != null && d.getDateEcheance().isBefore(aujourdhui);
+            BigDecimal total = d.getMontantPrincipal().add(
+                    d.getMontantPenalites() != null ? d.getMontantPenalites() : BigDecimal.ZERO);
+            dettes.add(new DetteDto(d.getId(), d.getTypeImpot(), d.getPeriode(), d.getDateEcheance(),
+                    d.getMontantPrincipal(), d.getMontantPenalites(), total,
+                    enRetard ? "EN RETARD" : "A_PAYER", enRetard));
+        }
+        return dettes;
+    }
+
+    private BigDecimal montantForfaitaire(String code) {
+        return switch (code) {
+            case "TVA" -> new BigDecimal("500000");
+            case "IRSA" -> new BigDecimal("250000");
+            case "IS" -> new BigDecimal("2000000");
+            case "IR" -> new BigDecimal("750000");
+            default -> new BigDecimal("300000");
+        };
+    }
+}

@@ -22,6 +22,33 @@ Consolidation Déclaration + Reçu de Paiement dans une seule vue.
 
 
 
+
+mameno bordereaux ,
+
+Question:
+-mahazo asina gestion d'agent sy chef de centre ve(affectation) ?, hierarchie misy ato afahana manao anzay(ilaina amle resaka validation anle chef de centre)
+-mila agent ve milance anle relance sa to de atao automatique de validenle chef de centre fotsiny  PAS BESOIN DE CHEF DE CENTRE RELANCE AUTOM 
+-On peut faire le paiement en ligne via mobile money?( recevoir facture apres) ou ce n'est pas encore possible CE N"EST PAS ENCORE POSSIBLE
+-petit IA qui repond au questions 
+-bilingue
+-envoie de sms/email autom
+
+Nature : TVA , IR, IRSA
+31/03/N: IS
+15/05/N: IS
+chaque mois: TVA avant le 15 de chaque mois , TVA janvier: avant le 15 fevrier
+misy ny :
+    exercice acheval = 1er juin -> fin 30 juin,
+    annee fiscal = exercice fiscal 
+    3 mois echeance IS, 
+    5eme mois fin echenace IR
+
+
+
+
+
+
+
 Hierarchie demande
 -chef de centre
 
@@ -32,6 +59,50 @@ Hierarchie validation relance sms/email
 Paiement => Facture 
 
 
+          
 
+
+| Étapes / Phases | Libellé des Tâches | Estimation (Jours) |
+|---|---|---:|
+| **Préparation** | Prise en main du projet et étude des processus DGI | 2,0 |
+| | Installation des environnements (Docker, Spring Boot, Vue 3, Git) | 1,0 |
+| | Spécifications fonctionnelles et règles métier (Code de Procédure Fiscale) | 4,0 |
+| | Conception BDD (Modèle Logique de Données 3NF) et architecture technique | 3,0 |
+| | Prototypage et maquettage des interfaces utilisateur | 3,0 |
+| | **Sous-Total Préparation** | **13,0** |
+| **Réalisation / Dev** | **1. Gestion des Accès & Sécurité** | |
+| | Authentification et session sécurisée — Espace Contribuable | 1,0 |
+| | Authentification DGI et gestion des rôles (**AGENT** vs **CHEF_CENTRE**) | 2,0 |
+| | **2. Affectation & Dossier Contribuable** | |
+| | Classification et affectation automatique des contribuables (**CF** / **SRE** / **DGE** selon CA) | 3,0 |
+| | Modifications de situation fiscale (régime, adresse, cessation d'activité) | 2,0 |
+| | Paramétrage du référentiel DGI et développement des API REST (centres fiscaux, agents, portefeuilles) | 2,5 |
+| | **3. Déclarations, Dettes & Automatisations** | |
+| | Déclarations et émission du Bordereau de Versement (BV) unique | 2,0 |
+| | Calcul automatique des pénalités de retard | 2,0 |
+| | Générateur d'alertes automatiques avant/après échéance (**J−5**, **J−1**, **J+1**, **J+7**) | 2,0 |
+| | Moteur de relance automatique CPF (Relance simple, Mise en demeure, Sommation) | 2,0 |
+| | **4. Paiements & Rapprochement** | |
+| | Saisie des paiements espèces (Caisse Agent) | 2,0 |
+| | Import des fichiers bancaires (CSV/Excel) et matching automatique par BV | 3,0 |
+| | Génération automatique du Quitus Fiscal / Attestation PDF (avec QR Code) | 2,0 |
+| | **5. Procédures Amiables & Contentieux** | |
+| | Soumission et simulation des demandes d'échéancier (Moratoire) | 2,0 |
+| | Instruction Agent et validation Chef des demandes d'échéancier (critères objectifs) | 3,0 |
+| | Demandes de Mise en Veilleuse (motif, durée, gel des pénalités/relances) | 2,0 |
+| | Procédures d'Avis à Tiers Détenteur (ATD bancaires) et délivrance de Mainlevée | 2,5 |
+| | **6. Tableaux de Bord & Consultation** | |
+| | Dashboard Contribuable (solde fiscal, alertes tricolores 🔴/🟠/🟢, calendrier) | 2,0 |
+| | Dashboard DGI Back-Office (vue macroscopique Chef & file de travail Agent) | 2,0 |
+| | Historique Unifié (déclarations ↔ paiements ↔ quitus) & Centre de notifications | 2,0 |
+| | Fiche Contribuable 360° (dossier complet, score de risque, dettes, moratoires) | 2,0 |
+| | **Sous-Total Réalisation** | **45,0** |
+| **Tests** | Tests unitaires, d'intégration API REST et corrections de bugs | 3,0 |
+| **Déploiement** | Déploiement local conteneurisé avec Docker Compose | 2,0 |
+| **Formation & Documentation** | Rédaction du manuel d'utilisation et du rapport de stage | 2,0 |
+| | Formation et préparation de la soutenance | 1,0 |
+| **TOTAL** | **Durée totale du projet** | **66,0 jours** |
+
+ Conception et développement d'une plateforme web de suivi du recouvrement fiscal, d'instruction des moratoires et de classification des contribuables : Projet HETRA-RINDRA pour le SSI
 
 

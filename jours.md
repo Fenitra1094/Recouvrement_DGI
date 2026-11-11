@@ -26,7 +26,6 @@
 | **Cartographie SIG (Leaflet)** | |
 | Intégration de la carte interactive Leaflet pour la géolocalisation | 1,0 |
 | Visualisation spatiale des contribuables débiteurs et Heatmap des créances | 2,0 |
-| Planning et attribution de la file de travail quotidienne des agents | 2,0 |
 | **Passerelle E-Commerce & Flux Externe** | |
 | Modélisation et intégration des flux de déclaration E-Commerce | 7,0 |
 | **POS / Guichet Caisse** | |

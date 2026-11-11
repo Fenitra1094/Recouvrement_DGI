@@ -1,0 +1,55 @@
+docker compose down -v
+docker compose up -d
+
+docker compose up -d --build 
+
+docker logs ssif-backend --tail 100 -f
+
+docker exec -it ssif-db psql -U dgi_user -d recouvrement_db
+
+
+{
+  "raisonSociale": "SOCIETE FY",
+  "email": "fy@bako.mg",
+  "motDePasse": "123456qwerty",
+  "adresse": "Andoharanofotsy Antananarivo",
+  "telephone": "+261 34 00 222 12",
+  "chiffreAffairesAnnuel": 120000,
+  Nif
+}
+
+{
+  "email": "fy@bako.mg",
+  "motDePasse": "123456qwerty",
+}
+
+
+{
+  "nom": "Rall",
+  "prenom": "Fiii",
+  "email": "rall@gmail.com",
+  "motDePasse": "0987654321",
+  "roleCode": "CHEF_CENTRE",
+  "centreCode": "CF_TANÀ_1"
+}
+
+
+{
+  "email": "rall@gmail.com",
+  "motDePasse": "0987654321"
+}
+
+odnb zczz faiu jlmu
+ 
+ docker logs -f ssif-backend 2>&1 | findstr /i "Relance"
+
+ question: d'ou vient le dette 
+
+question: si on declare mais ne paye pas , quels sont les penalites
+
+Les mois se comptent-ils entamés (1 jour de retard = 1 mois) ou complets ?
+le paiement peut etre partiel ? 
+
+
+
+Raha manapotoana de manontany tsara anle paiement partiel oe realisable ve 

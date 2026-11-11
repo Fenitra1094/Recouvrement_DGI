@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f4f6f9;
+  color: #212529;
+}
+
+/* Custom Sidebar DGI */
+.bg-dgi-dark {
+  background-color: #1e2229 !important;
+}
+
+.sidebar-link {
+  color: #a0a7b5;
+  border-radius: 8px;
+  padding: 10px 15px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease-in-out;
+}
+
+.sidebar-link:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-link.active {
+  color: #ffffff !important;
+  background-color: #0d6efd !important;
+  font-weight: 600;
+}
+
+.card {
+  border-radius: 12px;
+}

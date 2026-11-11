@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+
+  # ==========================================
+  # BASE DE DONNÉES POSTGRESQL
+  # ==========================================
+  db:
+    image: postgres:16-alpine
+    container_name: ssif-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: recouvrement_db
+      POSTGRES_USER: dgi_user
+      POSTGRES_PASSWORD: 1234
+
+    ports:
+      # 5433 côté machine pour éviter le conflit avec le PostgreSQL
+      # local installé sur Windows (service postgres.exe sur 5432)
+      - "5433:5432"
+
+    volumes:
+      - ssif_pg_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    networks:
+      - ssif-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dgi_user -d recouvrement_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # ==========================================
+  # BACKEND SPRING Boot
+  # ==========================================
+  backend:
+    build: ./Backend
+    container_name: ssif-backend
+    restart: unless-stopped
+
+    ports:
+      - "8085:8085"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      SERVER_PORT: 8085
+
+      # Connexion PostgreSQL
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/recouvrement_db
+      SPRING_DATASOURCE_USERNAME: dgi_user
+      SPRING_DATASOURCE_PASSWORD: 1234
+
+      # Crée les tables correspondant aux @Entity
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      # Charge data.sql (données de référence) au démarrage
+      SPRING_SQL_INIT_MODE: always
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+
+      # Affiche les requêtes SQL dans les logs
+      SPRING_JPA_SHOW_SQL: "true"
+
+      # Heure de Madagascar (dates des relances et des notifications)
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Indian/Antananarivo"
+
+      # Compte Gmail d'envoi des relances : valeurs lues depuis le fichier .env (non versionné)
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+
+    # Paramètres de la relance automatique, modifiables sans recompiler
+    volumes:
+      - ./config:/app/config:ro
+
+    networks:
+      - ssif-net
+
+
+  # ==========================================
+  # FRONTEND CONTRIBUABLE
+  # ==========================================
+  frontend-contribuable:
+    build:
+      context: ./Frontend/CONTRIBUABLE
+      args:
+        VITE_API_BASE_URL: http://localhost:8085/api
+
+    container_name: ssif-front-contribuable
+    restart: unless-stopped
+
+    ports:
+      - "3000:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - ssif-net
+
+
+  # ==========================================
+  # FRONTEND DGI
+  # ==========================================
+  frontend-dgi:
+    build:
+      context: ./Frontend/DGI
+      args:
+        VITE_API_BASE_URL: http://localhost:8085/api
+
+    container_name: ssif-front-dgi
+    restart: unless-stopped
+
+    ports:
+      - "3001:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - ssif-net
+
+
+# ==========================================
+# RÉSEAU
+# ==========================================
+networks:
+  ssif-net:
+    driver: bridge
+
+
+# ==========================================
+# VOLUME POSTGRESQL
+# ==========================================
+volumes:
+  ssif_pg_data:

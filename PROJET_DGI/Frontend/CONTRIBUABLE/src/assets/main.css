@@ -1,0 +1,47 @@
+/* Importation d'une belle police moderne (Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary-navy: #0f2a4a;
+  --primary-blue: #2563eb;
+  --bg-main: #f4f6f9;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-main);
+  color: #1e293b;
+}
+
+/* Style personnalisé pour les cartes */
+.card {
+  border-radius: 12px;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Animation douce au survol des boutons */
+.btn {
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Badges élégants */
+.badge {
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+/* Personnalisation des boutons d'action principale */
+.btn-primary {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
