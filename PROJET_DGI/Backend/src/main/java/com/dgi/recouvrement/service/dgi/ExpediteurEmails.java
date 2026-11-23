@@ -90,7 +90,8 @@ public class ExpediteurEmails {
                 .map(r -> r.getTypeRelance().getCode())
                 .max(Comparator.comparingInt(NotificationService.NIVEAUX::indexOf))
                 .orElse("RELANCE_1");
-        BigDecimal total = relances.stream().map(Relance::getMontantDu).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = relances.stream().map(Relance::getMontantDu).filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         try {
             emailService.envoyerHtml(envoi.getDestinataire(),
                     modele.sujet(n.getTitre(), c),

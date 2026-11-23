@@ -112,5 +112,14 @@ public class DashboardSummaryDTO {
         public void setResteAPayer(BigDecimal resteAPayer) { this.resteAPayer = resteAPayer; }
         public String getStatut() { return statut; }
         public void setStatut(String statut) { this.statut = statut; }
+
+        // Bordereau en cours de validité (null s'il n'y en a pas ou s'il a expiré)
+        private String referenceBv;
+        private LocalDate bvValableJusquau;
+
+        public String getReferenceBv() { return referenceBv; }
+        public void setReferenceBv(String referenceBv) { this.referenceBv = referenceBv; }
+        public LocalDate getBvValableJusquau() { return bvValableJusquau; }
+        public void setBvValableJusquau(LocalDate bvValableJusquau) { this.bvValableJusquau = bvValableJusquau; }
     }
 }

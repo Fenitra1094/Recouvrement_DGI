@@ -37,6 +37,15 @@
           </li>
           <li class="nav-item">
             <router-link
+              to="/contribuable/declarer"
+              class="nav-link fw-semibold text-secondary"
+              active-class="active text-white bg-blue-dgi"
+            >
+              <i class="bi bi-file-earmark-plus me-2"></i>Déclarations
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
               to="/contribuable/echeancier"
               class="nav-link fw-semibold text-secondary"
               active-class="active text-white bg-blue-dgi"

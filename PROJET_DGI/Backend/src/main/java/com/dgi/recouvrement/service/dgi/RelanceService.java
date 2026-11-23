@@ -57,6 +57,7 @@ public class RelanceService {
     private final TypeRelanceRepository typeRelanceRepository;
     private final TypeNotificationRepository typeNotificationRepository;
     private final StatutEnvoiRepository statutEnvoiRepository;
+    private final TypeImpotsRepository typeImpotsRepository;
 
     public RelanceService(RelanceProperties props, CalculEcheance calculEcheance,
                           NotificationService notificationService, EmailService emailService,
@@ -67,7 +68,8 @@ public class RelanceService {
                           EnvoiNotificationRepository envoiNotificationRepository,
                           TypeRelanceRepository typeRelanceRepository,
                           TypeNotificationRepository typeNotificationRepository,
-                          StatutEnvoiRepository statutEnvoiRepository) {
+                          StatutEnvoiRepository statutEnvoiRepository,
+                          TypeImpotsRepository typeImpotsRepository) {
         this.props = props;
         this.calculEcheance = calculEcheance;
         this.notificationService = notificationService;
@@ -83,6 +85,7 @@ public class RelanceService {
         this.typeRelanceRepository = typeRelanceRepository;
         this.typeNotificationRepository = typeNotificationRepository;
         this.statutEnvoiRepository = statutEnvoiRepository;
+        this.typeImpotsRepository = typeImpotsRepository;
     }
 
     /** Référentiels et compteurs partagés par tous les lots d'une même campagne. */
@@ -96,8 +99,14 @@ public class RelanceService {
         int contribuablesRelances, relancesCreees, ignoreesDelai, emailsEnAttente, lotsEnErreur;
     }
 
-    /** Une obligation retenue pour la relance : la ligne de la vue et son calcul. */
-    private record Candidate(ObligationARelancer obligation, Declaration declaration, Dette dette, EcheanceDTO echeance) {}
+    /**
+     * Une obligation retenue pour la relance : la ligne de la vue et son calcul.
+     * Non déclarée : declaration, dette et echeance sont null (rien n'est déclaré, aucun montant connu).
+     */
+    private record Candidate(ObligationARelancer obligation, TypeImpots typeImpots,
+                             Declaration declaration, Dette dette, EcheanceDTO echeance) {
+        boolean nonDeclaree() { return Relance.DECLARATION.equals(obligation.getNature()); }
+    }
 
     /**
      * Exécute une campagne de relance :
@@ -120,7 +129,7 @@ public class RelanceService {
         campagne.enAttente = statutEnvoiRepository.findByLibelle("EN_ATTENTE")
                 .orElseThrow(() -> new IllegalStateException("Statut d'envoi EN_ATTENTE absent (data.sql)"));
 
-        List<Integer> ids = declarationRepository.findIdsContribuablesARelancer();
+        List<Integer> ids = declarationRepository.findIdsContribuablesARelancer(props.getObligationsAttenduesDepuis());
         for (int debut = 0; debut < ids.size(); debut += props.getTailleLot()) {
             List<Integer> lot = ids.subList(debut, Math.min(debut + props.getTailleLot(), ids.size()));
             try {
@@ -141,12 +150,14 @@ public class RelanceService {
 
     /** Un lot : quelques requêtes groupées (IN ...) au lieu de plusieurs requêtes par contribuable. */
     private void traiterLot(List<Integer> idsContribuables, Campagne campagne) {
-        List<ObligationARelancer> obligations =
-                declarationRepository.findObligationsARelancer(idsContribuables, campagne.limiteAntiSpam);
+        List<ObligationARelancer> obligations = declarationRepository.findObligationsARelancer(
+                idsContribuables, campagne.limiteAntiSpam, props.getObligationsAttenduesDepuis());
 
         Map<Long, Declaration> declarations = declarationRepository.findAllById(
-                        obligations.stream().map(ObligationARelancer::getIdDeclaration).toList()).stream()
+                        obligations.stream().map(ObligationARelancer::getIdDeclaration).filter(Objects::nonNull).toList()).stream()
                 .collect(Collectors.toMap(Declaration::getId, Function.identity()));
+        Map<Integer, TypeImpots> typesImpots = typeImpotsRepository.findAll().stream()
+                .collect(Collectors.toMap(TypeImpots::getIdTypesImpots, Function.identity()));
         Map<Long, Dette> dettes = detteRepository.findAllById(
                         obligations.stream().map(ObligationARelancer::getIdDette).filter(Objects::nonNull).toList()).stream()
                 .collect(Collectors.toMap(Dette::getId, Function.identity()));
@@ -156,16 +167,24 @@ public class RelanceService {
         // Calcul et critères, regroupés par contribuable (la vue est triée par contribuable)
         Map<Integer, List<Candidate>> parContribuable = new LinkedHashMap<>();
         for (ObligationARelancer o : obligations) {
-            Declaration declaration = declarations.get(o.getIdDeclaration());
-            Dette dette = o.getIdDette() != null ? dettes.get(o.getIdDette()) : null;
-            EcheanceDTO e = calculEcheance.calculer(declaration, dette, campagne.aujourdHui);
-            if (!meriteRelance(e)) continue;
+            TypeImpots type = typesImpots.get(o.getIdTypeImpots());
+            Candidate candidate;
+            if (Relance.DECLARATION.equals(o.getNature())) {
+                // Non déclarée : seul le retard compte (aucun montant à comparer au minimum)
+                if (o.getJoursRetard() < props.getJoursRetardMinimum()) continue;
+                candidate = new Candidate(o, type, null, null, null);
+            } else {
+                Declaration declaration = declarations.get(o.getIdDeclaration());
+                Dette dette = o.getIdDette() != null ? dettes.get(o.getIdDette()) : null;
+                EcheanceDTO e = calculEcheance.calculer(declaration, dette, campagne.aujourdHui);
+                if (!meriteRelance(e)) continue;
+                candidate = new Candidate(o, type, declaration, dette, e);
+            }
             if (Boolean.TRUE.equals(o.getRelanceeRecemment())) {
                 campagne.ignoreesDelai++;
                 continue;
             }
-            parContribuable.computeIfAbsent(o.getIdContribuable(), k -> new ArrayList<>())
-                    .add(new Candidate(o, declaration, dette, e));
+            parContribuable.computeIfAbsent(o.getIdContribuable(), k -> new ArrayList<>()).add(candidate);
         }
 
         parContribuable.forEach((idContribuable, candidates) ->
@@ -175,12 +194,23 @@ public class RelanceService {
     private void relancer(Contribuable c, List<Candidate> candidates, Campagne campagne) {
         List<Relance> relances = new ArrayList<>();
         for (Candidate cand : candidates) {
+            ObligationARelancer o = cand.obligation();
             Relance r = new Relance();
+            r.setNature(o.getNature());
+            r.setContribuable(c);
+            r.setTypeImpots(cand.typeImpots());
+            r.setPeriode(o.getPeriode());
+            r.setAnnee(o.getAnnee());
             r.setDateRelance(campagne.maintenant);
-            r.setDette(cand.dette() != null ? cand.dette() : constaterDette(cand.declaration(), cand.echeance()));
-            r.setJoursRetard(cand.echeance().getJoursRetard());
-            r.setMontantDu(cand.echeance().getResteAPayer());
-            r.setTypeRelance(niveauSuivant(cand.obligation().getNbRelances(), campagne));
+            r.setTypeRelance(niveauSuivant(o.getNbRelances(), campagne));
+            if (cand.nonDeclaree()) {
+                // Ni dette ni montant : on ne crée rien d'autre que la relance
+                r.setJoursRetard(o.getJoursRetard());
+            } else {
+                r.setDette(cand.dette() != null ? cand.dette() : constaterDette(cand.declaration(), cand.echeance()));
+                r.setJoursRetard(cand.echeance().getJoursRetard());
+                r.setMontantDu(cand.echeance().getResteAPayer());
+            }
             relances.add(r);
         }
 
@@ -188,14 +218,17 @@ public class RelanceService {
                 .map(r -> r.getTypeRelance().getCode())
                 .max(Comparator.comparingInt(NotificationService.NIVEAUX::indexOf))
                 .orElse("RELANCE_1");
-        BigDecimal total = relances.stream().map(Relance::getMontantDu).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = relances.stream().map(Relance::getMontantDu).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int nonDeclarees = (int) relances.stream().filter(Relance::estNonDeclaree).count();
+        int impayees = relances.size() - nonDeclarees;
 
         Notification n = new Notification();
         n.setContribuable(c);
         n.setTypeNotification(campagne.typeRelance);
         n.setDateEnvoi(campagne.maintenant);
-        n.setTitre(modele.titre(niveau, relances.size()));
-        n.setMessage(modele.message(niveau, relances.size(), total));
+        n.setTitre(modele.titre(niveau, impayees, nonDeclarees));
+        n.setMessage(modele.message(niveau, impayees, nonDeclarees, total));
         notificationRepository.save(n);
 
         relances.forEach(r -> r.setNotification(n));

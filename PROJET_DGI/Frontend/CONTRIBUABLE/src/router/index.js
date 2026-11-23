@@ -5,6 +5,7 @@ import DemandeEcheancierView from '@/views/contribuable/DemandeEcheancierView.vu
 import NotificationsView from '@/views/contribuable/NotificationsView.vue'
 import HistoriqueView from '@/views/contribuable/HistoriqueView.vue'
 import DemandeVeilleuseView from '@/views/contribuable/DemandeVeilleuseView.vue'
+import DeclarationView from '@/views/contribuable/DeclarationView.vue'
 import LoginView from '@/views/auth/LoginView.vue'
 import RegisterView from '@/views/auth/RegisterView.vue'
 
@@ -30,6 +31,7 @@ const router = createRouter({
 
     // Pages contribuable (protégées)
     { path: '/contribuable/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
+    { path: '/contribuable/declarer', name: 'declarer', component: DeclarationView, meta: { requiresAuth: true } },
     { path: '/contribuable/echeancier', component: DemandeEcheancierView, meta: { requiresAuth: true } },
     { path: '/contribuable/notifications', component: NotificationsView, meta: { requiresAuth: true } },
     { path: '/contribuable/historique', name: 'historique', component: HistoriqueView, meta: { requiresAuth: true } },

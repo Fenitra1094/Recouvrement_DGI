@@ -54,7 +54,7 @@
           <div class="text-uppercase fs-8 text-secondary fw-bold px-2 mt-3 mb-1">Opérations Guichet</div>
 
           <router-link to="/dgi/paiements-especes" class="sidebar-link" active-class="active">
-            <i class="bi bi-cash-stack"></i> Saisie Caisse (Espèces)
+            <i class="bi bi-cash-stack"></i> Guichet (déclaration, caisse)
           </router-link>
         </template>
 

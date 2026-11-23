@@ -3,7 +3,7 @@ package com.dgi.recouvrement.service.contribuable;
 import com.dgi.recouvrement.dto.NotificationDTO;
 import com.dgi.recouvrement.dto.NotificationDTO.EnvoiDTO;
 import com.dgi.recouvrement.dto.NotificationDTO.LigneRelanceDTO;
-import com.dgi.recouvrement.entity.Declaration;
+import com.dgi.recouvrement.service.declaration.CalculImpot;
 import com.dgi.recouvrement.entity.EnvoiNotification;
 import com.dgi.recouvrement.entity.Notification;
 import com.dgi.recouvrement.entity.Relance;
@@ -14,10 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,13 +31,16 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final RelanceRepository relanceRepository;
     private final EnvoiNotificationRepository envoiNotificationRepository;
+    private final CalculImpot calculImpot;
 
     public NotificationService(NotificationRepository notificationRepository,
                                RelanceRepository relanceRepository,
-                               EnvoiNotificationRepository envoiNotificationRepository) {
+                               EnvoiNotificationRepository envoiNotificationRepository,
+                               CalculImpot calculImpot) {
         this.notificationRepository = notificationRepository;
         this.relanceRepository = relanceRepository;
         this.envoiNotificationRepository = envoiNotificationRepository;
+        this.calculImpot = calculImpot;
     }
 
     public List<NotificationDTO> getNotificationsByNif(String nif) {
@@ -80,10 +85,12 @@ public class NotificationService {
             List<Relance> relances = relancesParNotification.getOrDefault(n.getId(), List.of());
 
             List<LigneRelanceDTO> lignes = relances.stream()
-                    .sorted(Comparator.comparing((Relance r) -> r.getDette().getDeclaration().getDateLimitePaiement()))
                     .map(this::ligne)
+                    .sorted(Comparator.comparing(LigneRelanceDTO::dateLimite, Comparator.nullsLast(Comparator.naturalOrder())))
                     .toList();
-            BigDecimal montantTotal = relances.stream().map(Relance::getMontantDu).reduce(BigDecimal.ZERO, BigDecimal::add);
+            // Total des impayés ; une obligation non déclarée n'a pas encore de montant
+            BigDecimal montantTotal = relances.stream().map(Relance::getMontantDu).filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             Relance plusGrave = relances.stream()
                     .max(Comparator.comparingInt(r -> NIVEAUX.indexOf(r.getTypeRelance().getCode())))
                     .orElse(null);
@@ -101,12 +108,16 @@ public class NotificationService {
         }).toList();
     }
 
+    /** L'obligation est lue sur la relance elle-même : une relance DECLARATION n'a ni déclaration ni dette. */
     private LigneRelanceDTO ligne(Relance r) {
-        Declaration d = r.getDette().getDeclaration();
-        return new LigneRelanceDTO(d.getId(),
-                d.getTypeImpots() != null ? d.getTypeImpots().getCode() : "IMPOT",
-                d.getTypeImpots() != null ? d.getTypeImpots().getLibelle() : "",
-                d.getPeriode(), d.getAnnee(), d.getDateLimitePaiement(),
+        boolean declaree = r.getDette() != null;
+        LocalDate dateLimite = declaree ? r.getDette().getDeclaration().getDateLimitePaiement()
+                : calculImpot.dateLimite(r.getTypeImpots(), r.getPeriode(), r.getAnnee());
+        return new LigneRelanceDTO(declaree ? r.getDette().getDeclaration().getId() : null,
+                r.getNature(),
+                r.getTypeImpots() != null ? r.getTypeImpots().getCode() : "IMPOT",
+                r.getTypeImpots() != null ? r.getTypeImpots().getLibelle() : "",
+                r.getPeriode(), r.getAnnee(), dateLimite,
                 r.getJoursRetard(), r.getMontantDu(),
                 r.getTypeRelance().getCode(), r.getTypeRelance().getLibelle());
     }

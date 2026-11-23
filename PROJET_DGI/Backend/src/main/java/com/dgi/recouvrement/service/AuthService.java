@@ -3,6 +3,7 @@ package com.dgi.recouvrement.service;
 import com.dgi.recouvrement.dto.*;
 import com.dgi.recouvrement.entity.*;
 import com.dgi.recouvrement.repository.*;
+import com.dgi.recouvrement.service.declaration.CalculImpot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class AuthService {
     @Autowired private TypeImpotsRepository typeImpotsRepository;
     @Autowired private AssujettissementRepository assujettissementRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private CalculImpot calculImpot;
 
     // --- CONTRIBUABLE ---
     @Transactional
@@ -43,22 +45,19 @@ public class AuthService {
             throw new RuntimeException("Ce NIF est déjà rattaché à un compte.");
         }
 
-        // 2. Classification automatique selon le CA (inchangée)
+        // 2. Régime fiscal selon le CA et l'option IR, seuil dans config/impots.properties
         BigDecimal ca = req.getChiffreAffairesAnnuel() != null
                 ? req.getChiffreAffairesAnnuel()
                 : BigDecimal.ZERO;
+        String codeRegime = calculImpot.regime(ca, req.isOptionIr());
 
-        String codeRegime;
+        // Centre fiscal de rattachement selon le CA (inchangé)
         String codeCentre;
-
         if (ca.compareTo(new BigDecimal("5000000000")) >= 0) {
-            codeRegime = "IS";
             codeCentre = "DGE_01";
         } else if (ca.compareTo(new BigDecimal("100000000")) >= 0) {
-            codeRegime = "IR";
             codeCentre = "SRE_TANÀ";
         } else {
-            codeRegime = "ISYN";
             codeCentre = "CF_TANÀ_1";
         }
 
@@ -81,13 +80,9 @@ public class AuthService {
 
         c = contribuableRepository.save(c);
 
-        // 4. Assujettissements par défaut
-        if ("ISYN".equals(codeRegime)) {
-            ajouterImpot(c, "IR");
-        } else {
-            ajouterImpot(c, "TVA");
-            ajouterImpot(c, "IRSA");
-            ajouterImpot(c, codeRegime);
+        // 4. Assujettissements : les impôts dus par le régime (IRSA ; IR + TVA ; IS)
+        for (String codeImpot : CalculImpot.impotsDuRegime(codeRegime)) {
+            ajouterImpot(c, codeImpot);
         }
 
         return new AuthResponse(

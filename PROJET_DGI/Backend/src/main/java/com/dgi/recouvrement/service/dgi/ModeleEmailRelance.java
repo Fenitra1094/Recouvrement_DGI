@@ -1,13 +1,15 @@
 package com.dgi.recouvrement.service.dgi;
 
 import com.dgi.recouvrement.entity.Contribuable;
-import com.dgi.recouvrement.entity.Declaration;
 import com.dgi.recouvrement.entity.Relance;
+import com.dgi.recouvrement.service.declaration.CalculImpot;
 import com.dgi.recouvrement.util.LibellesFiscaux;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -17,28 +19,57 @@ import java.util.List;
 @Component
 public class ModeleEmailRelance {
 
-    public String titre(String niveau, int nombre) {
-        String obligations = nombre > 1 ? nombre + " obligations fiscales impayées" : "1 obligation fiscale impayée";
+    private final CalculImpot calculImpot;
+
+    public ModeleEmailRelance(CalculImpot calculImpot) {
+        this.calculImpot = calculImpot;
+    }
+
+    /** "2 obligations impayées et 3 déclarations manquantes", selon ce qui est relancé. */
+    private static String objet(int impayees, int nonDeclarees) {
+        List<String> parties = new ArrayList<>();
+        if (impayees > 0) parties.add(impayees > 1 ? impayees + " obligations fiscales impayées" : "1 obligation fiscale impayée");
+        if (nonDeclarees > 0) parties.add(nonDeclarees > 1 ? nonDeclarees + " déclarations manquantes" : "1 déclaration manquante");
+        return String.join(" et ", parties);
+    }
+
+    public String titre(String niveau, int impayees, int nonDeclarees) {
+        String objet = objet(impayees, nonDeclarees);
         return switch (niveau) {
-            case "MISE_EN_DEMEURE" -> "Mise en demeure de payer : " + obligations;
-            case "RELANCE_2" -> "Deuxième relance : " + obligations;
-            default -> "Relance : " + obligations;
+            case "MISE_EN_DEMEURE" -> "Mise en demeure : " + objet;
+            case "RELANCE_2" -> "Deuxième relance : " + objet;
+            default -> "Relance : " + objet;
         };
     }
 
-    public String message(String niveau, int nombre, BigDecimal total) {
-        String constat = (nombre > 1 ? nombre + " obligations fiscales restent impayées" : "1 obligation fiscale reste impayée")
-                + " après la date limite, pour un total de " + LibellesFiscaux.montant(total)
-                + " (principal et pénalités de retard). ";
+    public String message(String niveau, int impayees, int nonDeclarees, BigDecimal total) {
+        StringBuilder constat = new StringBuilder();
+        if (impayees > 0) {
+            constat.append(impayees > 1 ? impayees + " obligations fiscales restent impayées" : "1 obligation fiscale reste impayée")
+                    .append(" après la date limite, pour un total de ").append(LibellesFiscaux.montant(total))
+                    .append(" (principal et pénalités de retard). ");
+        }
+        if (nonDeclarees > 0) {
+            constat.append(nonDeclarees > 1 ? nonDeclarees + " déclarations attendues n'ont pas été déposées"
+                            : "1 déclaration attendue n'a pas été déposée")
+                    .append(" alors que la date limite est passée. Déposez-les depuis « Déclarations » : ")
+                    .append("le montant dû sera calculé à la déclaration. ");
+        }
         return constat + switch (niveau) {
-            case "MISE_EN_DEMEURE" -> "Malgré nos relances précédentes, ces sommes n'ont pas été réglées. "
-                    + "Vous êtes mis en demeure de les payer dans un délai de 8 jours. À défaut, l'administration "
+            case "MISE_EN_DEMEURE" -> "Malgré nos relances précédentes, votre situation n'a pas été régularisée. "
+                    + "Vous êtes mis en demeure de la régulariser dans un délai de 8 jours. À défaut, l'administration "
                     + "pourra engager des mesures de recouvrement forcé, notamment un avis à tiers détenteur (ATD).";
-            case "RELANCE_2" -> "Malgré notre précédente relance, ces montants restent dus. Les pénalités de retard "
-                    + "continuent de s'appliquer chaque mois (1 % du principal).";
-            default -> "Nous vous invitons à régulariser votre situation dans les meilleurs délais. "
-                    + "Si vous ne pouvez pas payer en une fois, vous pouvez demander un échéancier depuis votre espace.";
+            case "RELANCE_2" -> "Malgré notre précédente relance, votre situation n'a pas été régularisée."
+                    + (impayees > 0 ? " Les pénalités de retard continuent de s'appliquer chaque mois (1 % du principal)." : "");
+            default -> "Nous vous invitons à régulariser votre situation dans les meilleurs délais."
+                    + (impayees > 0 ? " Si vous ne pouvez pas payer en une fois, vous pouvez demander un échéancier depuis votre espace." : "");
         };
+    }
+
+    /** Date limite d'une relance : celle de la déclaration, ou calculée depuis l'impôt et la période si non déclarée. */
+    public LocalDate dateLimite(Relance r) {
+        if (r.getDette() != null) return r.getDette().getDeclaration().getDateLimitePaiement();
+        return calculImpot.dateLimite(r.getTypeImpots(), r.getPeriode(), r.getAnnee());
     }
 
     public String sujet(String titre, Contribuable c) {
@@ -55,15 +86,36 @@ public class ModeleEmailRelance {
 
         StringBuilder lignes = new StringBuilder();
         for (Relance r : relances) {
-            Declaration d = r.getDette().getDeclaration();
-            String impot = d.getTypeImpots() != null ? d.getTypeImpots().getCode() : "";
+            String impot = r.getTypeImpots() != null ? r.getTypeImpots().getCode() : "";
+            String montant = r.estNonDeclaree()
+                    ? "<span style=\"color:#b42318\">Non déclarée</span>"
+                    : "<strong>" + LibellesFiscaux.montant(r.getMontantDu()) + "</strong>";
             lignes.append("<tr>")
                     .append(td(esc(impot) + "<br><span style=\"color:#64748b;font-size:12px\">"
-                            + esc(LibellesFiscaux.periode(d.getPeriode(), d.getAnnee())) + "</span>", "left"))
-                    .append(td(LibellesFiscaux.date(d.getDateLimitePaiement()), "left"))
+                            + esc(LibellesFiscaux.periode(r.getPeriode(), r.getAnnee())) + "</span>", "left"))
+                    .append(td(LibellesFiscaux.date(dateLimite(r)), "left"))
                     .append(td(r.getJoursRetard() + " j", "right"))
-                    .append(td("<strong>" + LibellesFiscaux.montant(r.getMontantDu()) + "</strong>", "right"))
+                    .append(td(montant, "right"))
                     .append("</tr>");
+        }
+
+        // Récapitulatif : un montant n'existe que pour ce qui est déclaré ; une déclaration manquante
+        // n'a pas encore de montant (il sera calculé quand elle sera déposée), on ne l'affiche donc pas à 0 Ar.
+        long nonDeclarees = relances.stream().filter(Relance::estNonDeclaree).count();
+        long impayees = relances.size() - nonDeclarees;
+        StringBuilder recap = new StringBuilder();
+        if (impayees > 0) {
+            recap.append("<tr><td colspan=\"3\" style=\"padding:12px 10px;font-weight:bold\">Total à payer")
+                    .append(nonDeclarees > 0 ? " (déclarations déposées)" : "").append("</td>")
+                    .append("<td align=\"right\" style=\"padding:12px 10px;font-weight:bold;font-size:16px;color:")
+                    .append(couleur).append("\">").append(LibellesFiscaux.montant(total)).append("</td></tr>");
+        }
+        if (nonDeclarees > 0) {
+            recap.append("<tr><td colspan=\"3\" style=\"padding:12px 10px;font-weight:bold\">Déclarations à déposer")
+                    .append("<br><span style=\"font-weight:normal;color:#64748b;font-size:12px\">")
+                    .append("Le montant dû sera calculé au dépôt de chaque déclaration, pénalités de retard comprises.</span></td>")
+                    .append("<td align=\"right\" style=\"padding:12px 10px;font-weight:bold;font-size:16px;color:#b42318\">")
+                    .append(nonDeclarees).append("</td></tr>");
         }
 
         return """
@@ -91,8 +143,7 @@ public class ModeleEmailRelance {
                         <th align="right" style="padding:10px;border-bottom:1px solid #e6eaf0">Montant dû</th>
                       </tr>
                       %s
-                      <tr><td colspan="3" style="padding:12px 10px;font-weight:bold">Total à régler</td>
-                          <td align="right" style="padding:12px 10px;font-weight:bold;font-size:16px;color:%s">%s</td></tr>
+                      %s
                     </table>
                   </td></tr>
                   <tr><td align="center" style="padding:24px 28px">
@@ -107,7 +158,7 @@ public class ModeleEmailRelance {
                 </td></tr></table>
                 </body></html>
                 """.formatted(couleur, couleur, esc(titre), esc(c.getRaisonSociale()), esc(c.getNif()), esc(message),
-                lignes, couleur, LibellesFiscaux.montant(total), esc(lienPlateforme));
+                lignes, recap, esc(lienPlateforme));
     }
 
     private static String td(String contenu, String alignement) {

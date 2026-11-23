@@ -60,8 +60,9 @@ services:
       # Crée les tables correspondant aux @Entity
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
-      # Charge data.sql (données de référence) au démarrage
-      SPRING_SQL_INIT_MODE: always
+      # data.sql n'est PLUS rejoué au démarrage : la base garde son état.
+      # Pour repartir des données de départ : "always", un démarrage, puis remettre "never".
+      SPRING_SQL_INIT_MODE: never
       SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
 
       # Affiche les requêtes SQL dans les logs
@@ -89,7 +90,8 @@ services:
     build:
       context: ./Frontend/CONTRIBUABLE
       args:
-        VITE_API_BASE_URL: http://localhost:8085/api
+        # Adresse relative : le nginx du frontend transmet /api au backend (voir nginx.conf)
+        VITE_API_BASE_URL: /api
 
     container_name: ssif-front-contribuable
     restart: unless-stopped
@@ -111,7 +113,8 @@ services:
     build:
       context: ./Frontend/DGI
       args:
-        VITE_API_BASE_URL: http://localhost:8085/api
+        # Adresse relative : le nginx du frontend transmet /api au backend (voir nginx.conf)
+        VITE_API_BASE_URL: /api
 
     container_name: ssif-front-dgi
     restart: unless-stopped

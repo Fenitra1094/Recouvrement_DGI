@@ -7,6 +7,8 @@ import FicheContribuableView from '../views/contribuables/FicheContribuableView.
 import ValidationEcheancierView from '../views/echeanciers/ValidationEcheancierView.vue'
 import ValidationVeilleuseView from '../views/veilleuse/ValidationVeilleuseView.vue'
 import GestionAtdView from '../views/atd/GestionAtdView.vue'
+import EncaissementEspeceView from '../views/paiements/EncaissementEspeceView.vue'
+import ImportBanqueView from '../views/paiements/ImportBanqueView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,11 +21,11 @@ const router = createRouter({
     { path: '/dgi/validations-echeanciers', name: 'validations-echeanciers', component: ValidationEcheancierView, meta: { requiresAuth: true } },
     { path: '/dgi/validations-veilleuse', name: 'validations-veilleuse', component: ValidationVeilleuseView, meta: { requiresAuth: true } },
     { path: '/dgi/atd', name: 'atd-dgi', component: GestionAtdView, meta: { requiresAuth: true } },
+    { path: '/dgi/paiements-especes', name: 'guichet', component: EncaissementEspeceView, meta: { requiresAuth: true } },
+    { path: '/dgi/import-banque', name: 'import-banque', component: ImportBanqueView, meta: { requiresAuth: true } },
 
     // Secours
     { path: '/dgi/contribuables', component: DashboardDgiView, meta: { requiresAuth: true } },
-    { path: '/dgi/paiements-especes', component: DashboardDgiView, meta: { requiresAuth: true } },
-    { path: '/dgi/import-banque', component: DashboardDgiView, meta: { requiresAuth: true } },
 
     // Fallback
     { path: '/:pathMatch(.*)*', redirect: '/login' },

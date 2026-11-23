@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Paramètres de la relance automatique, lus UNIQUEMENT depuis config/relance.properties (préfixe "relance.").
@@ -30,6 +31,8 @@ public class RelanceProperties {
     @NotNull private Boolean inclureEcheanciers;
     @NotNull @PositiveOrZero private Long miseEnDemeureApres;
     @NotNull @Positive private Integer tailleLot;
+    /** Obligations NON DÉCLARÉES : seules celles dont la date limite tombe à partir de ce jour sont signalées. */
+    @NotNull private LocalDate obligationsAttenduesDepuis;
     @Valid private final Email email = new Email();
 
     public static class Email {
@@ -77,6 +80,9 @@ public class RelanceProperties {
 
     public int getTailleLot() { return tailleLot; }
     public void setTailleLot(Integer tailleLot) { this.tailleLot = tailleLot; }
+
+    public LocalDate getObligationsAttenduesDepuis() { return obligationsAttenduesDepuis; }
+    public void setObligationsAttenduesDepuis(LocalDate depuis) { this.obligationsAttenduesDepuis = depuis; }
 
     public Email getEmail() { return email; }
 }

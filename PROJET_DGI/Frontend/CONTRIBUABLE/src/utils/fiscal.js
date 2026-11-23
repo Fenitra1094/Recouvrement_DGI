@@ -2,9 +2,8 @@
 
 // Nom complet et couleur d'identification de chaque type d'impôt
 export const IMPOTS = {
-  ISYN: { libelle: 'Impôt synthétique',               couleur: '#7c3aed' },
-  IR:   { libelle: 'Impôt sur le revenu',             couleur: '#0e7490' },
-  IS:   { libelle: 'Impôt sur les sociétés',          couleur: '#1d4ed8' },
+  IR:   { libelle: 'Impôt sur les revenus',           couleur: '#0e7490' },
+  IS:   { libelle: 'Impôt synthétique',               couleur: '#7c3aed' },
   TVA:  { libelle: 'Taxe sur la valeur ajoutée',      couleur: '#c2410c' },
   IRSA: { libelle: 'Impôt sur les revenus salariaux', couleur: '#be185d' },
 }

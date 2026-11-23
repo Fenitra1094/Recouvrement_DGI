@@ -63,19 +63,31 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="l in n.lignes" :key="l.idDeclaration">
+                      <tr v-for="l in n.lignes" :key="`${l.nature}-${l.impot}-${l.periode}-${l.annee}`">
                         <td><span class="badge bg-light text-dark border">{{ l.impot }}</span></td>
                         <td>{{ libellePeriode(l) }}</td>
                         <td>{{ formatDate(l.dateLimite) }}</td>
                         <td class="text-end">{{ l.joursRetard }} j</td>
-                        <td class="text-end fw-bold">{{ formatMontant(l.montantDu) }} Ar</td>
+                        <td v-if="l.nature === 'DECLARATION'" class="text-end text-danger">Non déclarée</td>
+                        <td v-else class="text-end fw-bold">{{ formatMontant(l.montantDu) }} Ar</td>
                         <td><small>{{ l.typeRelanceLibelle }}</small></td>
                       </tr>
                     </tbody>
                     <tfoot>
-                      <tr>
-                        <td colspan="4" class="fw-bold">Total à la date de la relance</td>
+                      <!-- Un montant n'existe que pour ce qui est déclaré : pas de "0 Ar" pour une déclaration manquante -->
+                      <tr v-if="nbImpayees(n)">
+                        <td colspan="4" class="fw-bold">
+                          Total à payer à la date de la relance<span v-if="nbNonDeclarees(n)"> (déclarations déposées)</span>
+                        </td>
                         <td class="text-end fw-bold text-danger">{{ formatMontant(n.montantTotal) }} Ar</td>
+                        <td></td>
+                      </tr>
+                      <tr v-if="nbNonDeclarees(n)">
+                        <td colspan="4" class="fw-bold">
+                          Déclarations à déposer
+                          <div class="small fw-normal text-muted">Le montant sera calculé au dépôt, pénalités de retard comprises.</div>
+                        </td>
+                        <td class="text-end fw-bold text-danger">{{ nbNonDeclarees(n) }}</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -107,6 +119,9 @@ const badge = useNotificationsStore()
 const notifications = ref([])
 const chargement = ref(false)
 const erreur = ref('')
+// Déclarations manquantes (sans montant) et obligations impayées d'une notification de relance
+const nbNonDeclarees = (n) => n.lignes.filter((l) => l.nature === 'DECLARATION').length
+const nbImpayees = (n) => n.lignes.length - nbNonDeclarees(n)
 const ouverts = reactive(new Set())
 
 const nonLues = computed(() => notifications.value.filter((n) => !n.estLue).length)

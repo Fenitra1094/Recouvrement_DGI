@@ -100,6 +100,17 @@
             class="form-input"
           />
         </div>
+
+        <!-- Régime fiscal : CA au-dessus du seuil ou option IR → IR + TVA ; sinon Impôt Synthétique -->
+        <div class="form-group">
+          <span class="form-label">Optez-vous pour l'Impôt sur les revenus (régime du réel) ?</span>
+          <div class="seg" role="radiogroup" aria-label="Option pour l'Impôt sur les revenus">
+            <button type="button" class="seg-btn" :class="{ on: form.optionIr }"
+                    role="radio" :aria-checked="form.optionIr" @click="form.optionIr = true">Oui</button>
+            <button type="button" class="seg-btn" :class="{ on: !form.optionIr }"
+                    role="radio" :aria-checked="!form.optionIr" @click="form.optionIr = false">Non, Impôt synthétique</button>
+          </div>
+        </div>
       </template>
 
       <!-- Étape 2 : Coordonnées -->
@@ -254,6 +265,7 @@ const form = reactive({
   email: '',
   adresse: '',
   chiffreAffairesAnnuel: null,
+  optionIr: false,
   motDePasse: '',
   confirmation: ''
 })
@@ -302,6 +314,8 @@ const handleSubmit = async () => {
       email: form.email,
       adresse: form.adresse,
       chiffreAffairesAnnuel: form.chiffreAffairesAnnuel,
+      // Au-dessus du seuil, le régime du réel s'applique de toute façon
+      optionIr: form.optionIr,
       motDePasse: form.motDePasse
     })
     router.push('/connexion')

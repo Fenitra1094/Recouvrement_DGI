@@ -1,4 +1,7 @@
-<script setup>
+  // Une obligation non déclarée n'a pas encore de montant : elle n'est pas « à payer » mais « à déclarer »
+  { cle: 'A_PAYER',    libelle: 'À payer',    test: (e) => e.statut !== 'PAYEE' && e.statut !== 'NON_DECLAREE' },
+  { cle: 'A_DECLARER', libelle: 'À déclarer', test: (e) => e.statut === 'NON_DECLAREE' },
+  { cle: 'EN_RETARD',  libelle: 'Paiement en retard', test: (e) => e.statut === 'EN_RETARD' },<script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import ContribuableLayout from '@/layouts/ContribuableLayout.vue'
 import api from '@/services/api'
@@ -19,7 +22,9 @@ const STATUTS = {
   ECHEANCE_PROCHE:       { libelle: 'Échéance proche',          ton: 'alerte', icone: 'bi-hourglass-split' },
   EN_ECHEANCIER:         { libelle: 'En échéancier',            ton: 'alerte', icone: 'bi-calendar2-range' },
   EN_ATTENTE_TRAITEMENT: { libelle: 'En attente de traitement', ton: 'alerte', icone: 'bi-inbox' },
+  EN_ATTENTE_ENCAISSEMENT: { libelle: "Chèque en cours d'encaissement", ton: 'neutre', icone: 'bi-journal-check' },
   EN_RETARD:             { libelle: 'En retard',                ton: 'danger', icone: 'bi-exclamation-octagon' },
+  NON_DECLAREE:          { libelle: 'Non déclarée',             ton: 'danger', icone: 'bi-file-earmark-x' },
 }
 const TON_NIVEAU = { ROUGE: 'danger', ORANGE: 'alerte', VERT: 'ok' }
 
@@ -30,9 +35,12 @@ const BANDEAUX = {
   EN_ECHEANCIER:         { titre: 'Dossier en échéancier', texte: 'Un plan de paiement est en cours. Deux mensualités manquées entraînent la rupture de l\'échéancier.' },
   EN_ATTENTE_TRAITEMENT: { titre: 'Demande en cours d\'examen', texte: 'Votre demande a été transmise à votre centre fiscal et attend une décision.' },
   EN_RETARD:             { titre: 'Dossier en retard', texte: 'Des obligations ont dépassé leur date limite. La pénalité de retard augmente de 1 % du principal chaque mois.' },
+  NON_DECLAREE:          { titre: 'Déclarations manquantes', texte: "Des déclarations attendues n'ont pas été déposées alors que leur date limite est passée. Déposez-les depuis « Déclarations »." },
 }
 
 const statut = (code) => STATUTS[code] || { libelle: code, ton: 'neutre', icone: 'bi-question-circle' }
+// Une obligation non déclarée n'a pas d'identifiant de déclaration : clé = impôt + période
+const cleEcheance = (e) => e.idDeclaration ?? `${e.impot}-${e.periode}-${e.annee}`
 
 const tonGlobal = computed(() => statut(resume.value?.statutGlobal).ton)
 const bandeau = computed(() => BANDEAUX[resume.value?.statutGlobal] || BANDEAUX.A_JOUR)
@@ -43,12 +51,14 @@ const alertesBandeau = computed(() => (resume.value?.alertes || []).filter((a) =
 
 // ---------- Filtres des obligations ----------
 const SITUATIONS = [
-  { cle: 'NON_REGLEES', libelle: 'Non réglées', test: (e) => e.statut !== 'PAYEE' },
-  { cle: 'EN_RETARD',   libelle: 'En retard',   test: (e) => e.statut === 'EN_RETARD' },
+  // Une obligation non déclarée n'a pas encore de montant : elle n'est pas « à payer » mais « à déclarer »
+  { cle: 'A_PAYER',     libelle: 'À payer',     test: (e) => e.statut !== 'PAYEE' && e.statut !== 'NON_DECLAREE' },
+  { cle: 'A_DECLARER',  libelle: 'À déclarer',  test: (e) => e.statut === 'NON_DECLAREE' },
+  { cle: 'EN_RETARD',   libelle: 'Paiement en retard', test: (e) => e.statut === 'EN_RETARD' },
   { cle: 'REGLEES',     libelle: 'Réglées',     test: (e) => e.statut === 'PAYEE' },
   { cle: 'TOUTES',      libelle: 'Toutes',      test: () => true },
 ]
-const FILTRES_DEFAUT = { situation: 'NON_REGLEES', impot: '', annee: '', du: '', au: '' }
+const FILTRES_DEFAUT = { situation: 'A_PAYER', impot: '', annee: '', du: '', au: '' }
 const filtres = reactive({ ...FILTRES_DEFAUT })
 
 const toutesEcheances = computed(() => resume.value?.echeances || [])
@@ -79,6 +89,23 @@ function reinitialiserFiltres() {
   Object.assign(filtres, FILTRES_DEFAUT)
 }
 // Part déjà payée sur le total exigible (principal + pénalités)
+// Copie du numéro de bordereau (navigator.clipboard n'existe qu'en HTTPS ou sur localhost : repli sinon)
+const copie = ref('')
+async function copier(texte) {
+  try {
+    await navigator.clipboard.writeText(texte)
+  } catch {
+    const zone = document.createElement('textarea')
+    zone.value = texte
+    document.body.appendChild(zone)
+    zone.select()
+    document.execCommand('copy')
+    zone.remove()
+  }
+  copie.value = texte
+  setTimeout(() => { if (copie.value === texte) copie.value = '' }, 1500)
+}
+
 function pctPaye(e) {
   if (e.statut === 'PAYEE') return 100
   const paye = Number(e.montantPaye || 0)
@@ -357,7 +384,7 @@ function joursAvant(iso) {
                   <span>au</span>
                   <input type="date" v-model="filtres.au" />
                 </label>
-                <button v-if="filtresActifs || filtres.situation !== 'NON_REGLEES'" type="button"
+                <button v-if="filtresActifs || filtres.situation !== 'A_PAYER'" type="button"
                         class="btn-lien" @click="reinitialiserFiltres">
                   <i class="bi bi-x-circle"></i> Réinitialiser
                 </button>
@@ -366,11 +393,17 @@ function joursAvant(iso) {
 
             <div v-if="echeancesFiltrees.length === 0" class="vide">
               <span class="vide-icone">
-                <i :class="['bi', filtres.situation === 'NON_REGLEES' && !filtresActifs ? 'bi-shield-check' : 'bi-funnel']"></i>
+                <i :class="['bi', filtres.situation === 'A_PAYER' && !filtresActifs ? 'bi-shield-check' : 'bi-funnel']"></i>
               </span>
-              <p v-if="filtres.situation === 'NON_REGLEES' && !filtresActifs">
-                Aucune obligation en attente. Votre situation est régulière.
-              </p>
+              <template v-if="filtres.situation === 'A_PAYER' && !filtresActifs">
+                <p v-if="compteSituation('A_DECLARER')">
+                  Aucun montant à payer. Mais
+                  <button type="button" class="btn-lien d-inline p-0 align-baseline" @click="filtres.situation = 'A_DECLARER'">
+                    {{ compteSituation('A_DECLARER') }} déclaration(s) restent à déposer
+                  </button>.
+                </p>
+                <p v-else>Aucun montant à payer. Votre situation est régulière.</p>
+              </template>
               <p v-else>Aucune obligation ne correspond à ces filtres.</p>
             </div>
             <div v-else class="table-responsive">
@@ -388,7 +421,7 @@ function joursAvant(iso) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="e in echeancesFiltrees" :key="e.idDeclaration" :class="`ligne ton-${statut(e.statut).ton}`">
+                  <tr v-for="e in echeancesFiltrees" :key="cleEcheance(e)" :class="`ligne ton-${statut(e.statut).ton}`">
                     <td>
                       <div class="impot">
                         <span class="impot-pastille" :style="{ '--i': impot(e.impot).couleur }">{{ e.impot }}</span>
@@ -405,17 +438,50 @@ function joursAvant(iso) {
                         <i class="bi bi-alarm"></i> {{ e.joursRetard }} j de retard
                       </span>
                     </td>
-                    <td class="num">{{ formatMontant(e.montantInitial) }}</td>
+                    <td v-if="e.statut === 'NON_DECLAREE'" class="num attenue">À déclarer</td>
+                    <td v-else class="num">{{ formatMontant(e.montantInitial) }}</td>
                     <td :class="['num', Number(e.penalites) ? 'txt-danger' : 'attenue']">
                       {{ Number(e.penalites) ? '+ ' + formatMontant(e.penalites) : '—' }}
                     </td>
+                    <!-- Non déclarée : pas de règlement ni de reste dû tant que le montant n'est pas connu -->
+                    <template v-if="e.statut === 'NON_DECLAREE'">
+                      <td class="attenue">—</td>
+                      <td class="num">
+                        <router-link to="/contribuable/declarer" class="btn-declarer">
+                          <i class="bi bi-pencil-square"></i> Déclarer
+                        </router-link>
+                      </td>
+                    </template>
+                    <template v-else>
                     <td>
                       <div class="reglement">
                         <div class="reglement-barre"><span :style="{ width: pctPaye(e) + '%' }"></span></div>
                         <span class="sous-info">{{ pctPaye(e) }} % · {{ formatMontant(e.montantPaye) }} Ar</span>
                       </div>
                     </td>
-                    <td class="num fort">{{ formatMontant(e.resteAPayer) }} <small>Ar</small></td>
+                    <td class="num">
+                      <span class="fort d-block">{{ formatMontant(e.resteAPayer) }} <small>Ar</small></span>
+                      <!-- Numéro du bordereau en cours : à présenter au guichet ou à indiquer à la banque -->
+                      <template v-if="e.referenceBv">
+                        <button
+                          type="button"
+                          class="bv-ref"
+                          :title="copie === e.referenceBv ? 'Copié' : 'Copier le numéro du bordereau'"
+                          @click="copier(e.referenceBv)"
+                        >
+                          <i :class="['bi', copie === e.referenceBv ? 'bi-check2' : 'bi-receipt']"></i>{{ e.referenceBv }}
+                        </button>
+                        <span class="sous-info">valable jusqu'au {{ formatDate(e.bvValableJusquau) }}</span>
+                      </template>
+                      <router-link
+                        v-else-if="e.idDeclaration && Number(e.resteAPayer) > 0 && e.statut !== 'EN_ATTENTE_ENCAISSEMENT'"
+                        to="/contribuable/declarer"
+                        class="bv-retirer"
+                      >
+                        Retirer un bordereau
+                      </router-link>
+                    </td>
+                    </template>
                     <td>
                       <span :class="['etiquette', `ton-${statut(e.statut).ton}`]">
                         <i :class="['bi', statut(e.statut).icone]"></i> {{ statut(e.statut).libelle }}
@@ -423,7 +489,7 @@ function joursAvant(iso) {
                     </td>
                   </tr>
                 </tbody>
-                <tfoot>
+                <tfoot v-if="filtres.situation !== 'A_DECLARER'">
                   <tr>
                     <td colspan="3">Total de la sélection</td>
                     <td class="num">{{ formatMontant(totauxFiltres.initial) }}</td>
@@ -465,7 +531,7 @@ function joursAvant(iso) {
                 <li><i class="puce ton-neutre"></i> À échoir / réglée</li>
               </ul>
               <ul v-if="echeancesDuMois.length" class="cal-liste">
-                <li v-for="e in echeancesDuMois" :key="e.idDeclaration">
+                <li v-for="e in echeancesDuMois" :key="cleEcheance(e)">
                   <span class="cal-tuile">
                     <strong>{{ formatDate(e.dateLimite, { day: '2-digit' }) }}</strong>
                     <small>{{ formatDate(e.dateLimite, { month: 'short' }) }}</small>
@@ -728,7 +794,14 @@ function joursAvant(iso) {
 
 /* ===================== Cartes ===================== */
 .grille { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.5rem; align-items: start; }
-.col-laterale { display: flex; flex-direction: column; gap: 1.5rem; }
+/* Colonne latérale fixée pendant le défilement : le calendrier reste visible le long d'une longue liste
+   d'obligations, au lieu de laisser une colonne vide sous lui. Défilement propre si elle dépasse l'écran. */
+.col-laterale {
+  display: flex; flex-direction: column; gap: 1.5rem;
+  position: sticky; top: 1.5rem;
+  max-height: calc(100vh - 3rem); overflow-y: auto;
+  padding-bottom: 0.25rem; scrollbar-width: thin;
+}
 .carte {
   background: #fff;
   border: 1px solid var(--trait);
@@ -820,6 +893,20 @@ function joursAvant(iso) {
 .impot-nom { font-size: 0.78rem; color: var(--gris); white-space: normal; max-width: 140px; line-height: 1.25; }
 .periode { display: block; font-weight: 600; color: var(--encre); }
 .sous-info { display: block; font-size: 0.72rem; color: var(--gris-clair); }
+.bv-ref {
+  display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;
+  padding: 0.1rem 0.45rem; border: 1px solid var(--trait); border-radius: 6px; background: var(--fond-doux);
+  font-family: 'Courier New', monospace; font-size: 0.74rem; font-weight: 700; color: var(--navy);
+  white-space: nowrap; cursor: pointer;
+}
+.bv-ref:hover { border-color: var(--navy); }
+.btn-declarer {
+  display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+  padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.78rem; font-weight: 700;
+  color: #b42318; background: #fef3f2; border: 1px solid #fecdca; text-decoration: none;
+}
+.btn-declarer:hover { background: #fee4e2; }
+.bv-retirer { display: block; margin-top: 0.3rem; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
 .retard { display: block; font-size: 0.72rem; font-weight: 700; color: var(--danger); }
 .reglement { min-width: 120px; }
 .reglement-barre { height: 6px; margin-bottom: 0.3rem; border-radius: 3px; overflow: hidden; background: #edf1f6; }
@@ -875,6 +962,7 @@ function joursAvant(iso) {
   .hero { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grille { grid-template-columns: 1fr; }
+  .col-laterale { position: static; max-height: none; overflow: visible; }
 }
 @media (max-width: 575px) {
   .hero { padding: 1.5rem 1.25rem; border-radius: 16px; }

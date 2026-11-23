@@ -14,8 +14,7 @@ docker exec -it ssif-db psql -U dgi_user -d recouvrement_db
   "motDePasse": "123456qwerty",
   "adresse": "Andoharanofotsy Antananarivo",
   "telephone": "+261 34 00 222 12",
-  "chiffreAffairesAnnuel": 120000,
-  Nif
+  "chiffreAffairesAnnuel": 120000
 }
 
 {
@@ -40,10 +39,10 @@ docker exec -it ssif-db psql -U dgi_user -d recouvrement_db
 }
 
 odnb zczz faiu jlmu
- 
- docker logs -f ssif-backend 2>&1 | findstr /i "Relance"
 
- question: d'ou vient le dette 
+docker logs -f ssif-backend 2>&1 | findstr /i "Relance"
+
+question: d'ou vient le dette 
 
 question: si on declare mais ne paye pas , quels sont les penalites
 
@@ -53,3 +52,24 @@ le paiement peut etre partiel ?
 
 
 Raha manapotoana de manontany tsara anle paiement partiel oe realisable ve 
+
+
+
+
+n'oublie pas , sur le demande d'echaciencier , on propose l'historique du contribuable pour aider le chef a valider , 
+
+Le troisième, la taxation d’office, mets-le si le temps le permet, sinon présente-le comme une perspective assumée. Tu ne seras pas pris en défaut, au contraire, ça montre que tu sais où s’arrête ta démo et pourquoi., on peut le faire ? 
+
+recouvrement_db=# select id_contribuables, email from contribuables where id_contribuables = 36;
+ id_contribuables |             email
+------------------+--------------------------------
+               36 | tobiasafidiarimalala@gmail.com
+(1 row)
+
+recouvrement_db=# select * from assujettissement where id_contribuables = 36;
+ id_assujettissement | date_debut | date_fin | est_actif | id_contribuables | id_types_impots
+---------------------+------------+----------+-----------+------------------+-----------------
+                   3 | 2024-10-29 |          | t         |               36 |               2
+(1 row)
+
+recouvrement_db=# le debut d'assujettissetissement de Jean Yves est deja en 2024 , mais ici , dans le tableau mise a jour il n'y a vraiment rien 

@@ -9,8 +9,13 @@ public class RegisterRequest {
     private String telephone;
     private BigDecimal chiffreAffairesAnnuel;
     private String nif;
+    /** CA sous le seuil : option pour l'IR (régime du réel) au lieu de l'Impôt Synthétique. */
+    private Boolean optionIr;
 
-    //Getters and Setters 
+    public boolean isOptionIr() { return Boolean.TRUE.equals(optionIr); }
+    public void setOptionIr(Boolean optionIr) { this.optionIr = optionIr; }
+
+    //Getters and Setters
 
     public String getRaisonSociale(){ return raisonSociale; }
     public void setRaisonSociale(String raisonSociale){ this.raisonSociale = raisonSociale; }

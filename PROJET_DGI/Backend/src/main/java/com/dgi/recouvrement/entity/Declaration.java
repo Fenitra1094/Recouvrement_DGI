@@ -1,5 +1,6 @@
 package com.dgi.recouvrement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,9 +29,6 @@ public class Declaration {
     @Column(name = "montant_principal", precision = 15, scale = 2, nullable = false)
     private BigDecimal montantPrincipal = BigDecimal.ZERO;
 
-    @Column(name = "montant_penalites", precision = 15, scale = 2)
-    private BigDecimal montantPenalites = BigDecimal.ZERO;
-
     @Column(name = "statut_paiement", length = 50, nullable = false)
     private String statutPaiement = "A_PAYER";
 
@@ -42,7 +40,37 @@ public class Declaration {
     @JoinColumn(name = "Id_contribuables", nullable = false)
     private Contribuable contribuable;
 
+    /** Base saisie : CA annuel (IS), revenu imposable (IR), CA HT du mois (TVA), salaire du mois (IRSA). */
+    @Column(name = "base_imposable", precision = 15, scale = 2)
+    private BigDecimal baseImposable;
+
+    /** TVA uniquement : TVA déductible du mois. */
+    @Column(name = "tva_deductible", precision = 15, scale = 2)
+    private BigDecimal tvaDeductible;
+
+    /** EN_LIGNE (espace contribuable) ou GUICHET (saisie par un agent). */
+    @Column(name = "canal", length = 20)
+    private String canal;
+
+    /** Agent qui a saisi la déclaration au guichet ; vide pour une déclaration en ligne. */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_agents_dgi")
+    private AgentDgi agent;
+
     public Declaration() {}
+
+    public BigDecimal getBaseImposable() { return baseImposable; }
+    public void setBaseImposable(BigDecimal baseImposable) { this.baseImposable = baseImposable; }
+
+    public BigDecimal getTvaDeductible() { return tvaDeductible; }
+    public void setTvaDeductible(BigDecimal tvaDeductible) { this.tvaDeductible = tvaDeductible; }
+
+    public String getCanal() { return canal; }
+    public void setCanal(String canal) { this.canal = canal; }
+
+    public AgentDgi getAgent() { return agent; }
+    public void setAgent(AgentDgi agent) { this.agent = agent; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -62,8 +90,6 @@ public class Declaration {
     public BigDecimal getMontantPrincipal() { return montantPrincipal; }
     public void setMontantPrincipal(BigDecimal montantPrincipal) { this.montantPrincipal = montantPrincipal; }
 
-    public BigDecimal getMontantPenalites() { return montantPenalites; }
-    public void setMontantPenalites(BigDecimal montantPenalites) { this.montantPenalites = montantPenalites; }
 
     public String getStatutPaiement() { return statutPaiement; }
     public void setStatutPaiement(String statutPaiement) { this.statutPaiement = statutPaiement; }

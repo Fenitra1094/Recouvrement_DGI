@@ -2,6 +2,19 @@
 -- HETRA-RINDRA (SIG-REC) - DATA SEED FIX
 -- ============================================================
 
+-- 0. NETTOYAGE (rejoué à chaque démarrage)
+-- Déclarations, paiements, dettes, bordereaux et relances de test : effacés puis recréés plus bas
+TRUNCATE TABLE envoi_notification, relance, notification, paiements, dettes, bordereaux_versement, declaration CASCADE;
+
+-- Correction des référentiels selon le schéma de la formation :
+-- IS = Impôt Synthétique (et non "Impôt sur les Sociétés" : les sociétés paient l'IR) ; l'ancien code ISYN disparaît.
+-- Les contribuables de l'ancien régime "Sociétés" passent au régime du réel (IR).
+DELETE FROM assujettissement WHERE id_types_impots = 5;
+DELETE FROM types_impots WHERE id_types_impots = 5;
+-- L'IRSA n'est pas un régime (impôt de l'employeur, donné par l'assujettissement) : le régime 3 disparaît.
+UPDATE contribuables SET id_regime_fiscaux = 2 WHERE id_regime_fiscaux = 3;
+DELETE FROM regime_fiscaux WHERE id_regime_fiscaux = 3;
+
 -- 1. SEED REFERENTIELS
 INSERT INTO statuts_contribuable (id_statuts_contribuable, code, libelle) VALUES
 (1, 'ACTIF', 'Actif / En activité'),
@@ -9,11 +22,12 @@ INSERT INTO statuts_contribuable (id_statuts_contribuable, code, libelle) VALUES
 (3, 'CESSATION', 'Cessation d''activité')
 ON CONFLICT (id_statuts_contribuable) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle;
 
+-- Régime déterminé à l'inscription (seuil dans config/impots.properties) :
+-- CA > seuil ou option IR -> réel (IR + TVA) ; sinon -> Impôt Synthétique
 INSERT INTO regime_fiscaux (id_regime_fiscaux, code, libelle, description) VALUES
-(1, 'ISYN', 'Impôt Synthétique', 'Chiffre d''affaires < 100 Millions Ar'),
-(2, 'IR', 'Impôt sur le Revenu', 'Chiffre d''affaires entre 100 Mns et 5 Mds Ar'),
-(3, 'IS', 'Impôt sur les Sociétés', 'Chiffre d''affaires >= 5 Milliards Ar')
-ON CONFLICT (id_regime_fiscaux) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle;
+(1, 'IS',   'Impôt Synthétique',         'CA sous le seuil, sans option IR : paie l''IS'),
+(2, 'IR',   'Régime du réel',            'CA au-dessus du seuil ou option IR : paie l''IR et la TVA')
+ON CONFLICT (id_regime_fiscaux) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle, description = EXCLUDED.description;
 
 INSERT INTO type_centre (id_type_centre, libelle) VALUES
 (1, 'Direction des Grandes Entreprises'),
@@ -27,13 +41,13 @@ INSERT INTO centres_fiscaux (id_centre_fiscal, code, nom, region, adresse, id_ty
 (3, 'CF_TANÀ_1', 'Centre Fiscal Antananarivo I', 'Analamanga', 'Analakely', 3)
 ON CONFLICT (id_centre_fiscal) DO UPDATE SET code = EXCLUDED.code, nom = EXCLUDED.nom;
 
-INSERT INTO types_impots (id_types_impots, code, libelle, periodicite) VALUES
-(1, 'ISYN', 'Impôt Synthétique', 'ANNUELLE'),
-(2, 'IR', 'Impôt sur le Revenu', 'ANNUELLE'),
-(3, 'TVA', 'Taxe sur la Valeur Ajoutée', 'MENSUELLE'),
-(4, 'IRSA', 'Impôt sur les Revenus Salariaux', 'MENSUELLE'),
-(5, 'IS', 'Impôt sur les Sociétés', 'ANNUELLE')
-ON CONFLICT (id_types_impots) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle;
+INSERT INTO types_impots (id_types_impots, code, libelle, periodicite, echeance_jour, echeance_decalage_mois, echeance_mois) VALUES
+(1, 'IS', 'Impôt Synthétique', 'ANNUELLE', 15, NULL, 5),
+(2, 'IR', 'Impôt sur les Revenus', 'ANNUELLE', 15, NULL, 5),
+(3, 'TVA', 'Taxe sur la Valeur Ajoutée', 'MENSUELLE', 15, 1, NULL),
+(4, 'IRSA', 'Impôt sur les Revenus Salariaux', 'MENSUELLE', 15, 1, NULL)
+ON CONFLICT (id_types_impots) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle,
+    echeance_jour = EXCLUDED.echeance_jour, echeance_decalage_mois = EXCLUDED.echeance_decalage_mois, echeance_mois = EXCLUDED.echeance_mois;
 
 INSERT INTO roles_agent (id_roles_agent, code, libelle) VALUES
 (1, 'AGENT', 'Agent Opérationnel'),
@@ -53,14 +67,14 @@ ON CONFLICT (id_agents_dgi) DO UPDATE SET email = EXCLUDED.email, mot_de_passe =
 
 -- 2. CONTRIBUABLES TEST (mot de passe : password123)
 -- Adresses email et téléphones réels, pour recevoir les relances pendant les tests
---   1  ROCHEL     : IR,   3 obligations en retard
---   34 HARIMALALA : IS,   6 obligations en retard
---   35 CARENE     : ISYN, en échéancier
---   50 DIANA, 51 NJARA : sans déclaration (prêts pour les tests SMS)
+--   1  ROCHEL     : réel (IR + TVA), 3 obligations en retard
+--   34 HARIMALALA : réel (IR + TVA), 6 obligations en retard
+--   35 CARENE     : Impôt Synthétique (IS), en échéancier
+--   50 DIANA, 51 NJARA : Impôt Synthétique, sans déclaration (prêts pour tester la déclaration et le guichet)
 INSERT INTO contribuables (id_contribuables, nif, raison_sociale, email, telephone, mot_de_passe, chiffre_affaires_annuel, id_statuts_contribuable, id_regime_fiscaux, id_centre_fiscal)
 VALUES
 (1,  '3001000001', 'ROCHEL RANDRIAMANNTENA',    'rochelrandriamanantena@gmail.com',   '0341638587', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va',   450000000.00, 1, 2, 2),
-(34, '3009876543', 'HARIMALALA ERICKA RANDRIA', 'harimalalaerickarandria@gmail.com', '0349322431', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va', 12500000000.00, 1, 3, 1),
+(34, '3009876543', 'HARIMALALA ERICKA RANDRIA', 'harimalalaerickarandria@gmail.com', '0349322431', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va', 12500000000.00, 1, 2, 1),
 (35, '3005557777', 'CARENE RAZAFY',             'carenerazafy3@gmail.com',           '0382318042', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va',    65000000.00, 1, 1, 3),
 (50, '3002000050', 'DIANA FANDRESENA',          'dianafandresena4@gmail.com',        '0384905689', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va',    30000000.00, 1, 1, 3),
 (51, '3002000051', 'NJARA NIRINA ELISSAH',      'njaranirinaelissah@gmail.com',      '0382035996', '$2a$10$0TCIkAsNnFtTpkPRSjbFlOEZAoFKPSKnDmYVWgIx48dnYCjN086Va',    45000000.00, 1, 1, 3)
@@ -75,8 +89,15 @@ ON CONFLICT (id_contribuables) DO UPDATE SET
     id_regime_fiscaux = EXCLUDED.id_regime_fiscaux,
     id_centre_fiscal = EXCLUDED.id_centre_fiscal;
 
--- Nettoyage préventif des déclarations, dettes et relances (rejouées à chaque démarrage)
-TRUNCATE TABLE envoi_notification, relance, notification, paiements, dettes, bordereaux_versement, declaration CASCADE;
+-- Assujettissements des contribuables de test : seuls ces impôts peuvent être déclarés.
+-- Impôts du régime + IRSA pour les employeurs (ROCHEL et HARIMALALA ont du personnel)
+DELETE FROM assujettissement WHERE id_contribuables IN (1, 34, 35, 50, 51);
+INSERT INTO assujettissement (date_debut, est_actif, id_types_impots, id_contribuables) VALUES
+('2020-01-01', true, 2, 1),  ('2020-01-01', true, 3, 1),  ('2020-01-01', true, 4, 1),
+('2020-01-01', true, 2, 34), ('2020-01-01', true, 3, 34), ('2020-01-01', true, 4, 34),
+('2020-01-01', true, 1, 35),
+('2020-01-01', true, 1, 50),
+('2020-01-01', true, 1, 51);
 
 -- 3. DECLARATIONS TEST
 -- ROCHEL (ID: 1 - NIF: 3001000001)
@@ -92,9 +113,9 @@ INSERT INTO declaration (id_declaration, periode, annee, date_declaration, date_
 
 -- HARIMALALA (ID: 34 - NIF: 3009876543)
 INSERT INTO declaration (id_declaration, periode, annee, date_declaration, date_limite_paiement, montant_principal, montant_penalites, statut_paiement, id_types_impots, id_contribuables) VALUES
-(200, 'A2023', 2023, '2024-05-10', '2024-05-15', 38000000.00,       0.00, 'PAYEE',     5, 34),
-(201, 'A2024', 2024, '2025-06-10', '2025-05-15', 45000000.00, 6750000.00, 'EN_RETARD', 5, 34),
-(202, 'T4',    2025, '2026-01-20', '2026-01-15', 11250000.00, 1237500.00, 'EN_RETARD', 5, 34),
+(200, 'A2023', 2023, '2024-05-10', '2024-05-15', 38000000.00,       0.00, 'PAYEE',     2, 34),
+(201, 'A2024', 2024, '2025-06-10', '2025-05-15', 45000000.00, 6750000.00, 'EN_RETARD', 2, 34),
+(202, 'T4',    2025, '2026-01-20', '2026-01-15', 11250000.00, 1237500.00, 'EN_RETARD', 2, 34),
 (203, 'M11',   2025, '2025-12-30', '2025-12-15', 22000000.00, 2640000.00, 'EN_RETARD', 3, 34),
 (204, 'M12',   2025, '2026-01-25', '2026-01-15', 25000000.00, 2750000.00, 'EN_RETARD', 3, 34),
 (205, 'M12',   2025, '2026-01-25', '2026-01-15',  5500000.00,  605000.00, 'EN_RETARD', 4, 34),
@@ -134,9 +155,9 @@ INSERT INTO paiements (id_paiements, montant_payes, date_paiement, reference_tra
 (1, 12500000.00, '2025-04-29', 'VIR-2025-000101',  1, 1, 101),
 (2,  6100000.00, '2026-01-15', 'VIR-2026-000103',  1, 1, 103),
 (3,  1800000.00, '2026-01-20', 'CHQ-2026-000104',  4, 1, 104),
--- HARIMALALA : IS 2023 réglé avant la date limite (dernier paiement avant les retards)
+-- HARIMALALA : IR 2023 réglé avant la date limite (dernier paiement avant les retards)
 (4, 38000000.00, '2024-05-14', 'VIR-2024-000200',  1, 1, 200),
--- CARENE : ISYN 2024 payé par mobile money, ISYN 2025 en échéancier (2 mensualités versées)
+-- CARENE : IS 2024 payé par mobile money, IS 2025 en échéancier (2 mensualités versées)
 (5,  1200000.00, '2025-03-30', 'MM-2025-000301',   2, 1, 301),
 (6,   500000.00, '2026-02-27', 'MM-2026-000302A',  2, 1, 302),
 (7,   500000.00, '2026-03-30', 'ESP-2026-000302B', 3, 1, 302);
@@ -165,37 +186,111 @@ INSERT INTO types_notification (id_types_notification, code, libelle) VALUES
 ON CONFLICT (id_types_notification) DO UPDATE SET code = EXCLUDED.code, libelle = EXCLUDED.libelle;
 
 -- 7. VUE ET INDEX DE LA RELANCE
--- v_obligations_a_relancer : déclarations non soldées dont la date limite est dépassée.
--- La relance la lit au lieu de parcourir tous les contribuables. Les montants (pénalités, reste à payer)
--- ne sont pas ici : ils sont calculés en Java (CalculEcheance), comme sur le tableau de bord contribuable.
--- Exclues : déclarations payées, dettes soldées, demandes d'échéancier en attente de traitement.
--- Consultation directe : SELECT * FROM v_obligations_a_relancer;
-CREATE OR REPLACE VIEW v_obligations_a_relancer AS
-SELECT d.id_declaration,
+-- Copie de database/vue_relance.sql (à garder identique) : natures PAIEMENT et DECLARATION.
+DROP VIEW IF EXISTS v_obligations_a_relancer;
+CREATE VIEW v_obligations_a_relancer AS
+
+-- BRANCHE 1 : déclarée, non réglée
+SELECT 'PAIEMENT'::varchar                    AS nature,
+       d.id_declaration,
        d.id_contribuables,
+       d.id_types_impots,
+       d.periode,
+       d.annee,
        dt.id_dettes,
-       COALESCE(UPPER(dt.statut), 'OUVERTE')  AS statut_dette,
-       d.date_limite_paiement,
+       d.date_limite_paiement                 AS date_limite,
        CURRENT_DATE - d.date_limite_paiement  AS jours_retard,
        r.derniere_relance,
-       r.nb_relances
+       COALESCE(r.nb_relances, 0)             AS nb_relances
 FROM declaration d
 LEFT JOIN dettes dt ON dt.id_declaration = d.id_declaration
 LEFT JOIN LATERAL (
-    SELECT MAX(rl.date_relance) AS derniere_relance,
-           COUNT(*)             AS nb_relances
+    SELECT MAX(rl.date_relance) AS derniere_relance, COUNT(*) AS nb_relances
     FROM relance rl
-    WHERE rl.id_dettes = dt.id_dettes
+    WHERE rl.nature = 'PAIEMENT'
+      AND rl.id_contribuables = d.id_contribuables
+      AND rl.id_types_impots  = d.id_types_impots
+      AND rl.periode = d.periode
+      AND rl.annee IS NOT DISTINCT FROM d.annee
 ) r ON TRUE
 WHERE d.date_limite_paiement < CURRENT_DATE
-  AND UPPER(d.statut_paiement) <> 'PAYEE'
-  AND COALESCE(UPPER(dt.statut), 'OUVERTE') NOT IN ('SOLDEE', 'EN_ATTENTE_TRAITEMENT');
+  AND UPPER(d.statut_paiement) NOT IN ('PAYEE', 'EN_ATTENTE_ENCAISSEMENT')
+  AND COALESCE(UPPER(dt.statut), 'OUVERTE') NOT IN ('SOLDEE', 'EN_ATTENTE_TRAITEMENT')
+
+UNION ALL
+
+-- BRANCHE 2 : attendue, non déclarée
+SELECT 'DECLARATION'::varchar          AS nature,
+       NULL::bigint                    AS id_declaration,
+       o.id_contribuables,
+       o.id_types_impots,
+       o.periode,
+       o.annee,
+       NULL::bigint                    AS id_dettes,
+       o.date_limite,
+       CURRENT_DATE - o.date_limite    AS jours_retard,
+       r.derniere_relance,
+       COALESCE(r.nb_relances, 0)      AS nb_relances
+FROM (
+    -- Mensuelles (TVA, IRSA) : chaque mois depuis le début de l'assujettissement
+    SELECT a.id_contribuables, a.id_types_impots,
+           'M' || to_char(g.m, 'MM')     AS periode,
+           EXTRACT(YEAR FROM g.m)::int   AS annee,
+           (b.base + (LEAST(ti.echeance_jour,
+                            EXTRACT(DAY FROM (b.base + INTERVAL '1 month' - INTERVAL '1 day'))::int) - 1))::date AS date_limite
+    FROM assujettissement a
+    JOIN types_impots ti ON ti.id_types_impots = a.id_types_impots AND ti.periodicite = 'MENSUELLE'
+    CROSS JOIN LATERAL generate_series(date_trunc('month', a.date_debut),
+                                       date_trunc('month', COALESCE(a.date_fin, CURRENT_DATE)),
+                                       INTERVAL '1 month') AS g(m)
+    CROSS JOIN LATERAL (SELECT (date_trunc('month', g.m)
+                                + make_interval(months => ti.echeance_decalage_mois))::date AS base) b
+    WHERE a.est_actif
+
+    UNION ALL
+
+    -- Annuelles (IS, IR) : chaque exercice depuis le début de l'assujettissement
+    SELECT a.id_contribuables, a.id_types_impots,
+           'A' || g.y::text   AS periode,
+           g.y                AS annee,
+           (b.base + (LEAST(ti.echeance_jour,
+                            EXTRACT(DAY FROM (b.base + INTERVAL '1 month' - INTERVAL '1 day'))::int) - 1))::date AS date_limite
+    FROM assujettissement a
+    JOIN types_impots ti ON ti.id_types_impots = a.id_types_impots AND ti.periodicite = 'ANNUELLE'
+    CROSS JOIN LATERAL generate_series(EXTRACT(YEAR FROM a.date_debut)::int,
+                                       EXTRACT(YEAR FROM COALESCE(a.date_fin, CURRENT_DATE))::int) AS g(y)
+    CROSS JOIN LATERAL (SELECT make_date(g.y + 1, ti.echeance_mois, 1) AS base) b
+    WHERE a.est_actif
+) o
+LEFT JOIN LATERAL (
+    SELECT MAX(rl.date_relance) AS derniere_relance, COUNT(*) AS nb_relances
+    FROM relance rl
+    WHERE rl.nature = 'DECLARATION'
+      AND rl.id_contribuables = o.id_contribuables
+      AND rl.id_types_impots  = o.id_types_impots
+      AND rl.periode = o.periode
+      AND rl.annee   = o.annee
+) r ON TRUE
+WHERE o.date_limite < CURRENT_DATE
+  AND NOT EXISTS (SELECT 1 FROM declaration d
+                  WHERE d.id_contribuables = o.id_contribuables
+                    AND d.id_types_impots  = o.id_types_impots
+                    AND d.periode = o.periode
+                    AND d.annee   = o.annee);
+
+CREATE INDEX IF NOT EXISTS idx_relance_obligation ON relance (id_contribuables, id_types_impots, periode, annee, nature);
 
 -- Index utilisés par la vue (retards, historique des relances) et par l'expéditeur (file EN_ATTENTE)
 CREATE INDEX IF NOT EXISTS idx_declaration_date_limite ON declaration (date_limite_paiement);
 CREATE INDEX IF NOT EXISTS idx_declaration_contribuable ON declaration (id_contribuables);
 CREATE INDEX IF NOT EXISTS idx_relance_dette_date ON relance (id_dettes, date_relance);
 CREATE INDEX IF NOT EXISTS idx_envoi_notification_statut ON envoi_notification (id_statut_envoi, canal);
+
+-- 8. NUMÉROTATION DES BORDEREAUX ET DES PAIEMENTS
+-- BV-2026-000001, ESP-2026-000001, CHQ-…, VIR-… : séquences jamais remises à zéro, donc jamais de doublon
+CREATE SEQUENCE IF NOT EXISTS seq_reference_bv;
+CREATE SEQUENCE IF NOT EXISTS seq_reference_paiement;
+CREATE INDEX IF NOT EXISTS idx_bordereau_declaration ON bordereaux_versement (id_declaration);
 
 -- Resynchronisation des séquences d'Auto-Increment
 SELECT setval('contribuables_id_contribuables_seq', COALESCE((SELECT MAX(id_contribuables) FROM contribuables), 100), true);

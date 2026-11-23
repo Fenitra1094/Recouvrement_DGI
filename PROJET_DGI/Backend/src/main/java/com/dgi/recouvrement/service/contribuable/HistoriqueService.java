@@ -47,9 +47,9 @@ public class HistoriqueService {
         List<Declaration> declarations = declarationRepository.findByContribuableNif(nif);
 
         // Seuls les paiements validés comptent (un paiement en attente ou rejeté ne règle rien)
-        Map<Long, List<Paiement>> paiementsParDeclaration = paiementRepository.findByDeclarationContribuableNif(nif).stream()
+        Map<Long, List<Paiement>> paiementsParDeclaration = paiementRepository.findByBordereauDeclarationContribuableNif(nif).stream()
                 .filter(p -> p.getStatutPaiement() != null && "VALIDE".equalsIgnoreCase(p.getStatutPaiement().getLibelle()))
-                .collect(Collectors.groupingBy(p -> p.getDeclaration().getId()));
+                .collect(Collectors.groupingBy(p -> p.getBordereau().getDeclaration().getId()));
 
         List<DossierDTO> dossiers = new ArrayList<>();
         List<EvenementDTO> evenements = new ArrayList<>();

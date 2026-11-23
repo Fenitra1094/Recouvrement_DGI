@@ -28,6 +28,7 @@ public record NotificationDTO(
 
     public record LigneRelanceDTO(
             Long idDeclaration,
+            String nature,              // PAIEMENT ou DECLARATION (non déclarée : idDeclaration et montantDu vides)
             String impot,
             String impotLibelle,
             String periode,

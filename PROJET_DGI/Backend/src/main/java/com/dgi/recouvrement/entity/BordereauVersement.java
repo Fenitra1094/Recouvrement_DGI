@@ -19,7 +19,7 @@ public class BordereauVersement {
     private BigDecimal montantTotal;
 
     @Column(name = "statut", length = 50, nullable = false)
-    private String statut = "A_PAYER"; // A_PAYER, PAYE, EN_SOUFFRANCE
+    private String statut = "A_PAYER"; // A_PAYER, EN_ATTENTE_ENCAISSEMENT (chèque remis), PAYE, ANNULE (expiré ou chèque rejeté)
 
     @Column(name = "date_emission", nullable = false)
     private LocalDate dateEmission = LocalDate.now();
@@ -30,10 +30,6 @@ public class BordereauVersement {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "Id_declaration", nullable = false)
     private Declaration declaration;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "Id_contribuables", nullable = false)
-    private Contribuable contribuable;
 
     public BordereauVersement() {}
 
@@ -58,6 +54,4 @@ public class BordereauVersement {
     public Declaration getDeclaration() { return declaration; }
     public void setDeclaration(Declaration declaration) { this.declaration = declaration; }
 
-    public Contribuable getContribuable() { return contribuable; }
-    public void setContribuable(Contribuable contribuable) { this.contribuable = contribuable; }
 }

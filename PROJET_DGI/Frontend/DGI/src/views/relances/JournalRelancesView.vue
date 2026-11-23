@@ -163,7 +163,12 @@
                       </span>
                       <div class="small text-muted mt-1">{{ r.notification.lignes.length }} obligation(s)</div>
                     </td>
-                    <td class="text-end fw-bold text-danger text-nowrap">{{ formatMontant(r.notification.montantTotal) }} Ar</td>
+                    <td class="text-end fw-bold text-danger text-nowrap">
+                      <div v-if="nbImpayees(r.notification)">{{ formatMontant(r.notification.montantTotal) }} Ar</div>
+                      <div v-if="nbNonDeclarees(r.notification)" class="small">
+                        {{ nbNonDeclarees(r.notification) }} déclaration(s) à déposer
+                      </div>
+                    </td>
                     <td>
                       <template v-if="email(r)">
                         <span :class="['badge', STATUTS_ENVOI[email(r).statut]?.classe || 'bg-secondary']"
@@ -199,12 +204,13 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr v-for="l in r.notification.lignes" :key="l.idDeclaration">
+                          <tr v-for="l in r.notification.lignes" :key="`${l.nature}-${l.impot}-${l.periode}-${l.annee}`">
                             <td><span class="badge bg-light text-dark border">{{ l.impot }}</span></td>
                             <td>{{ libellePeriode(l) }}</td>
                             <td>{{ formatDate(l.dateLimite) }}</td>
                             <td class="text-end">{{ l.joursRetard }} j</td>
-                            <td class="text-end fw-bold">{{ formatMontant(l.montantDu) }} Ar</td>
+                            <td v-if="l.nature === 'DECLARATION'" class="text-end text-danger">Non déclarée</td>
+                            <td v-else class="text-end fw-bold">{{ formatMontant(l.montantDu) }} Ar</td>
                             <td class="small">{{ l.typeRelanceLibelle }}</td>
                           </tr>
                         </tbody>
@@ -236,6 +242,9 @@ const chargement = ref(false)
 const lancement = ref(false)
 const erreur = ref('')
 const resultat = ref(null)
+// Déclarations manquantes (sans montant) et obligations impayées d'une notification de relance
+const nbNonDeclarees = (n) => n.lignes.filter((l) => l.nature === 'DECLARATION').length
+const nbImpayees = (n) => n.lignes.length - nbNonDeclarees(n)
 const ouverts = reactive(new Set())
 const filtres = reactive({ recherche: '', niveau: '', lecture: '' })
 
